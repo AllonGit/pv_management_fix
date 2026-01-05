@@ -322,6 +322,91 @@ class PVManagementController:
         return bool(self.solcast_forecast_entity)
 
     @property
+    def next_cheap_hour(self) -> dict | None:
+        """
+        Findet die nächste günstige Stunde basierend auf EPEX Preisprognose.
+
+        Returns: {"hour": 14, "price": 0.15, "in_hours": 2} oder None
+        """
+        if not self._epex_price_forecast:
+            return None
+
+        try:
+            now = datetime.now()
+            current_hour = now.hour
+
+            # Finde die günstigsten Stunden in den nächsten 24h
+            upcoming_prices = []
+
+            for entry in self._epex_price_forecast:
+                # EPEX Spot data format kann variieren
+                # Versuche verschiedene Formate
+                hour = None
+                price = None
+
+                if isinstance(entry, dict):
+                    # Format: {"start_time": "2024-01-05T14:00:00", "price_eur_per_kwh": 0.15}
+                    start_time = entry.get("start_time") or entry.get("start") or entry.get("time")
+                    price = entry.get("price_eur_per_kwh") or entry.get("price") or entry.get("total_price")
+
+                    if start_time and price is not None:
+                        try:
+                            if isinstance(start_time, str):
+                                dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                                hour = dt.hour
+                            elif hasattr(start_time, 'hour'):
+                                hour = start_time.hour
+                        except (ValueError, AttributeError):
+                            continue
+
+                if hour is not None and price is not None:
+                    # Berechne Stunden bis zu dieser Stunde
+                    hours_until = hour - current_hour
+                    if hours_until < 0:
+                        hours_until += 24  # Nächster Tag
+
+                    if hours_until <= 24:  # Nur nächste 24 Stunden
+                        upcoming_prices.append({
+                            "hour": hour,
+                            "price": float(price),
+                            "in_hours": hours_until
+                        })
+
+            if not upcoming_prices:
+                return None
+
+            # Sortiere nach Preis und nimm günstigste
+            upcoming_prices.sort(key=lambda x: x["price"])
+            cheapest = upcoming_prices[0]
+
+            # Wenn die günstigste Stunde jetzt ist, nimm die nächste günstige
+            if cheapest["in_hours"] == 0 and len(upcoming_prices) > 1:
+                # Aktuelle Stunde ist bereits günstig - zeige nächste günstige
+                for p in upcoming_prices[1:]:
+                    if p["in_hours"] > 0:
+                        return p
+
+            return cheapest
+
+        except Exception as e:
+            _LOGGER.debug("Fehler bei next_cheap_hour Berechnung: %s", e)
+            return None
+
+    @property
+    def next_cheap_hour_text(self) -> str:
+        """Menschenlesbare Ausgabe der nächsten günstigen Stunde."""
+        info = self.next_cheap_hour
+        if not info:
+            return "Keine Prognose"
+
+        if info["in_hours"] == 0:
+            return f"Jetzt! ({info['price']:.2f}€/kWh)"
+        elif info["in_hours"] == 1:
+            return f"In 1 Stunde ({info['hour']}:00, {info['price']:.2f}€/kWh)"
+        else:
+            return f"In {info['in_hours']}h ({info['hour']}:00, {info['price']:.2f}€/kWh)"
+
+    @property
     def pv_production_kwh(self) -> float:
         """Aktuelle PV-Produktion vom Sensor."""
         return self._pv_production_kwh
@@ -568,14 +653,61 @@ class PVManagementController:
 
     @property
     def consumption_recommendation_text(self) -> str:
-        """Textuelle Empfehlung."""
+        """Textuelle Empfehlung mit Begründung."""
         rec = self.consumption_recommendation
+        reasons = self._get_recommendation_reasons()
+
         if rec == RECOMMENDATION_GREEN:
-            return "Jetzt verbrauchen!"
+            base = "Jetzt verbrauchen!"
         elif rec == RECOMMENDATION_RED:
-            return "Verbrauch vermeiden"
+            base = "Verbrauch vermeiden!"
         else:
-            return "Neutral"
+            base = "Neutral"
+
+        if reasons:
+            return f"{base} ({reasons})"
+        return base
+
+    def _get_recommendation_reasons(self) -> str:
+        """Erstellt menschenlesbare Begründung für die Empfehlung."""
+        reasons = []
+
+        # PV-Leistung
+        if self._pv_power >= self.pv_power_high:
+            reasons.append("viel PV")
+        elif self._pv_power < 100:
+            reasons.append("kein PV")
+
+        # Batterie
+        if self.battery_soc_entity:
+            if self._battery_soc >= self.battery_soc_high:
+                reasons.append("Akku voll")
+            elif self._battery_soc <= self.battery_soc_low:
+                reasons.append("Akku leer")
+
+        # Strompreis (EPEX oder normal)
+        if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
+            if self._epex_quantile <= 0.2:
+                reasons.append("Strom sehr günstig")
+            elif self._epex_quantile <= 0.4:
+                reasons.append("Strom günstig")
+            elif self._epex_quantile >= 0.8:
+                reasons.append("Strom sehr teuer")
+            elif self._epex_quantile >= 0.6:
+                reasons.append("Strom teuer")
+        else:
+            price = self.current_electricity_price
+            if price <= self.price_low_threshold:
+                reasons.append("Strom günstig")
+            elif price >= self.price_high_threshold:
+                reasons.append("Strom teuer")
+
+        # Tageszeit
+        hour = datetime.now().hour
+        if hour < 6 or hour > 21:
+            reasons.append("Nacht")
+
+        return ", ".join(reasons) if reasons else ""
 
     @property
     def consumption_recommendation_score(self) -> int:

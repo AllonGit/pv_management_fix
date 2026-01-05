@@ -42,6 +42,7 @@ async def async_setup_entry(
 
         # === EMPFEHLUNG (AMPEL) ===
         ConsumptionRecommendationSensor(ctrl, name),
+        NextCheapHourSensor(ctrl, name),
 
         # === Energie-Sensoren ===
         SelfConsumptionSensor(ctrl, name),
@@ -1175,4 +1176,62 @@ class ConsumptionRecommendationSensor(BaseEntity):
     @property
     def available(self) -> bool:
         """Sensor ist immer verfügbar."""
+        return True
+
+
+class NextCheapHourSensor(BaseEntity):
+    """
+    Zeigt die nächste günstige Stunde basierend auf EPEX Preisprognose.
+
+    Benötigt konfigurierte EPEX Spot Integration mit Preisprognose.
+    """
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Nächste günstige Stunde",
+            icon="mdi:clock-check",
+        )
+
+    @property
+    def native_value(self) -> str:
+        """Zeigt wann die nächste günstige Stunde ist."""
+        return self.ctrl.next_cheap_hour_text
+
+    @property
+    def icon(self) -> str:
+        """Icon basierend auf Verfügbarkeit."""
+        info = self.ctrl.next_cheap_hour
+        if not info:
+            return "mdi:clock-alert"
+        elif info["in_hours"] == 0:
+            return "mdi:clock-check"
+        elif info["in_hours"] <= 2:
+            return "mdi:clock-fast"
+        else:
+            return "mdi:clock-outline"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Detaillierte Informationen zur Preisprognose."""
+        info = self.ctrl.next_cheap_hour
+
+        attrs = {
+            "epex_integration": self.ctrl.has_epex_integration,
+            "forecast_entries": len(self.ctrl.epex_price_forecast),
+        }
+
+        if info:
+            attrs.update({
+                "hour": info["hour"],
+                "price_eur_kwh": round(info["price"], 4),
+                "in_hours": info["in_hours"],
+            })
+
+        return attrs
+
+    @property
+    def available(self) -> bool:
+        """Sensor ist verfügbar wenn EPEX konfiguriert ist."""
         return True
