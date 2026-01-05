@@ -337,12 +337,28 @@ class PVManagementController:
 
     @property
     def autarky_rate(self) -> float | None:
-        """Autarkiegrad (%). None wenn kein Verbrauch konfiguriert."""
-        # Ohne Verbrauchs-Sensor kann Autarkiegrad nicht berechnet werden
-        if not self.consumption_entity or self._consumption_kwh <= 0:
-            return None
-        current_self = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
-        return min(100.0, (current_self / self._consumption_kwh) * 100)
+        """
+        Autarkiegrad (%) - Anteil des Verbrauchs der durch PV gedeckt wird.
+
+        Berechnung:
+        - Mit Verbrauchs-Sensor: Eigenverbrauch / Verbrauch
+        - Ohne Verbrauchs-Sensor: Eigenverbrauch / (Eigenverbrauch + Netzbezug)
+        """
+        # Eigenverbrauch aus Totals (nicht aktuelle Werte)
+        self_consumption = self._total_self_consumption_kwh
+
+        # Option 1: Verbrauchs-Sensor vorhanden
+        if self.consumption_entity and self._consumption_kwh > 0:
+            return min(100.0, (self_consumption / self._consumption_kwh) * 100)
+
+        # Option 2: Netzbezug-Sensor vorhanden
+        if self.grid_import_entity and self._grid_import_kwh > 0:
+            total_consumption = self_consumption + self._grid_import_kwh
+            if total_consumption > 0:
+                return min(100.0, (self_consumption / total_consumption) * 100)
+
+        # Keine Berechnung möglich
+        return None
 
     @property
     def co2_saved_kg(self) -> float:
