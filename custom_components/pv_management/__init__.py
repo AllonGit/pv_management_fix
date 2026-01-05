@@ -670,22 +670,29 @@ class PVManagementController:
 
     @property
     def consumption_recommendation_text(self) -> str:
-        """Textuelle Empfehlung mit Begründung."""
+        """Textuelle Empfehlung mit Begründung.
+
+        Konzept für Nicht-Techniker:
+        - Der Präfix sagt klar was zu tun ist
+        - Die Gründe erklären warum
+        - Die Farbe (separates Attribut) visualisiert die Dringlichkeit
+        """
         rec = self.consumption_recommendation
         reasons = self._get_recommendation_reasons()
 
+        # Klare Handlungsempfehlung als Präfix
         if rec == RECOMMENDATION_DARK_GREEN:
-            base = "Perfekt zum Verbrauchen!"
+            prefix = "Idealer Zeitpunkt"
         elif rec == RECOMMENDATION_GREEN:
-            base = "Jetzt verbrauchen!"
+            prefix = "Guter Zeitpunkt"
         elif rec == RECOMMENDATION_RED:
-            base = "Verbrauch vermeiden!"
+            prefix = "Ungünstig"
         else:
-            base = "Neutral"
+            prefix = "Normal"
 
         if reasons:
-            return f"{base} ({reasons})"
-        return base
+            return f"{prefix}: {reasons}"
+        return prefix
 
     @property
     def consumption_recommendation_color(self) -> str:
@@ -715,7 +722,7 @@ class PVManagementController:
         elif self._pv_power >= pv_high:
             reasons.append("viel PV")
         elif self._pv_power < pv_low:
-            reasons.append("kein PV")
+            reasons.append("kaum PV")
 
         # Batterie
         if self.battery_soc_entity:
