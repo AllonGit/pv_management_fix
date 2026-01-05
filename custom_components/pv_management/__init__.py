@@ -344,8 +344,9 @@ class PVManagementController:
     def next_cheap_hour(self) -> dict | None:
         """
         Findet die nächste günstige Stunde basierend auf EPEX Preisprognose.
+        Verwendet den konfigurierten "Preis günstig" Schwellwert.
 
-        Returns: {"hour": 14, "price": 0.15, "in_hours": 2} oder None
+        Returns: {"hour": 14, "price": 0.15, "in_hours": 2, "is_cheap": True} oder None
         """
         if not self._epex_price_forecast:
             return None
@@ -353,13 +354,12 @@ class PVManagementController:
         try:
             now = datetime.now()
             current_hour = now.hour
+            threshold = self.price_low_threshold  # Benutzer-Schwellwert für "günstig"
 
-            # Finde die günstigsten Stunden in den nächsten 24h
+            # Sammle alle zukünftigen Preise
             upcoming_prices = []
 
             for entry in self._epex_price_forecast:
-                # EPEX Spot data format kann variieren
-                # Versuche verschiedene Formate
                 hour = None
                 price = None
 
@@ -385,33 +385,34 @@ class PVManagementController:
                             continue
 
                 if hour is not None and price is not None:
-                    # Berechne Stunden bis zu dieser Stunde
                     hours_until = hour - current_hour
-                    if hours_until < 0:
-                        hours_until += 24  # Nächster Tag
+                    if hours_until <= 0:
+                        hours_until += 24  # Nächster Tag oder jetzt
 
-                    if hours_until <= 24:  # Nur nächste 24 Stunden
+                    # Nur zukünftige Stunden (nicht die aktuelle)
+                    if hours_until > 0 and hours_until <= 24:
                         upcoming_prices.append({
                             "hour": hour,
                             "price": float(price),
-                            "in_hours": hours_until
+                            "in_hours": hours_until,
+                            "is_cheap": float(price) <= threshold
                         })
 
             if not upcoming_prices:
                 return None
 
-            # Sortiere nach Preis und nimm günstigste
+            # Zuerst: Suche nächste Stunde UNTER dem Schwellwert
+            cheap_hours = [p for p in upcoming_prices if p["is_cheap"]]
+            if cheap_hours:
+                # Sortiere nach Zeit (nächste günstige Stunde zuerst)
+                cheap_hours.sort(key=lambda x: x["in_hours"])
+                return cheap_hours[0]
+
+            # Fallback: Günstigste Stunde insgesamt (auch wenn über Schwellwert)
             upcoming_prices.sort(key=lambda x: x["price"])
-            cheapest = upcoming_prices[0]
-
-            # Wenn die günstigste Stunde jetzt ist, nimm die nächste günstige
-            if cheapest["in_hours"] == 0 and len(upcoming_prices) > 1:
-                # Aktuelle Stunde ist bereits günstig - zeige nächste günstige
-                for p in upcoming_prices[1:]:
-                    if p["in_hours"] > 0:
-                        return p
-
-            return cheapest
+            result = upcoming_prices[0]
+            result["is_cheap"] = False  # Markiere als "nicht wirklich günstig"
+            return result
 
         except Exception as e:
             _LOGGER.debug("Fehler bei next_cheap_hour Berechnung: %s", e)
@@ -424,12 +425,21 @@ class PVManagementController:
         if not info:
             return "Keine Prognose"
 
-        if info["in_hours"] == 0:
-            return f"Jetzt! ({info['price']:.2f}€/kWh)"
-        elif info["in_hours"] == 1:
-            return f"In 1 Stunde ({info['hour']}:00, {info['price']:.2f}€/kWh)"
+        price_ct = info['price'] * 100  # In Cent für bessere Lesbarkeit
+        time_str = f"{info['hour']}:00"
+
+        if info.get("is_cheap", False):
+            # Unter dem konfigurierten Schwellwert
+            if info["in_hours"] == 1:
+                return f"In 1h günstig ({time_str}, {price_ct:.1f}ct)"
+            else:
+                return f"In {info['in_hours']}h günstig ({time_str}, {price_ct:.1f}ct)"
         else:
-            return f"In {info['in_hours']}h ({info['hour']}:00, {info['price']:.2f}€/kWh)"
+            # Über Schwellwert, aber günstigste Option
+            if info["in_hours"] == 1:
+                return f"In 1h am günstigsten ({time_str}, {price_ct:.1f}ct)"
+            else:
+                return f"In {info['in_hours']}h am günstigsten ({time_str}, {price_ct:.1f}ct)"
 
     @property
     def pv_production_kwh(self) -> float:
