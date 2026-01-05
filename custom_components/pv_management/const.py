@@ -67,15 +67,15 @@ DEFAULT_PRICE_LOW_THRESHOLD: Final[float] = 0.15   # €/kWh - günstig
 DEFAULT_PV_POWER_HIGH: Final[float] = 1000.0  # W - viel PV
 
 # --- Ranges für Config Flow / Options -----------------------------------------
-RANGE_PRICE_EUR: Final[dict] = {"min": 0.01, "max": 1.0, "step": 0.01}
-RANGE_PRICE_CENT: Final[dict] = {"min": 1.0, "max": 100.0, "step": 0.1}
+RANGE_PRICE_EUR: Final[dict] = {"min": 0.01, "max": 1.0, "step": 0.001}
+RANGE_PRICE_CENT: Final[dict] = {"min": 1.0, "max": 100.0, "step": 0.01}
 RANGE_TARIFF_EUR: Final[dict] = {"min": 0.0, "max": 0.5, "step": 0.001}
-RANGE_TARIFF_CENT: Final[dict] = {"min": 0.0, "max": 50.0, "step": 0.1}
-RANGE_COST: Final[dict] = {"min": 0.0, "max": 100000.0, "step": 100.0}
-RANGE_OFFSET: Final[dict] = {"min": 0.0, "max": 50000.0, "step": 10.0}
-RANGE_ENERGY_OFFSET: Final[dict] = {"min": 0.0, "max": 100000.0, "step": 100.0}
-RANGE_BATTERY_SOC: Final[dict] = {"min": 0.0, "max": 100.0, "step": 5.0}
-RANGE_PV_POWER: Final[dict] = {"min": 0.0, "max": 20000.0, "step": 100.0}
+RANGE_TARIFF_CENT: Final[dict] = {"min": 0.0, "max": 50.0, "step": 0.01}
+RANGE_COST: Final[dict] = {"min": 0.0, "max": 200000.0, "step": 1.0}
+RANGE_OFFSET: Final[dict] = {"min": 0.0, "max": 100000.0, "step": 0.01}
+RANGE_ENERGY_OFFSET: Final[dict] = {"min": 0.0, "max": 500000.0, "step": 0.01}
+RANGE_BATTERY_SOC: Final[dict] = {"min": 0.0, "max": 100.0, "step": 1.0}
+RANGE_PV_POWER: Final[dict] = {"min": 0.0, "max": 50000.0, "step": 1.0}
 
 # --- Empfehlungs-Zustände -----------------------------------------------------
 RECOMMENDATION_GREEN: Final[str] = "green"
