@@ -34,45 +34,41 @@ async def async_setup_entry(
     name = entry.data.get(CONF_NAME, "PV Management")
 
     entities = [
-        # === Haupt-Sensoren (Übersicht) ===
+        # === EMPFEHLUNG (wichtigste für tägliche Nutzung) ===
+        ConsumptionRecommendationSensor(ctrl, name),
+        NextCheapHourSensor(ctrl, name),
+
+        # === AMORTISATION (Hauptzweck) ===
         AmortisationPercentSensor(ctrl, name),
         TotalSavingsSensor(ctrl, name),  # Dieser speichert persistent!
         RemainingCostSensor(ctrl, name),
         StatusSensor(ctrl, name),
+        EstimatedPaybackDateSensor(ctrl, name),
+        EstimatedRemainingDaysSensor(ctrl, name),
 
-        # === EMPFEHLUNG (AMPEL) ===
-        ConsumptionRecommendationSensor(ctrl, name),
-        NextCheapHourSensor(ctrl, name),
-
-        # === Energie-Sensoren ===
+        # === ENERGIE ===
         SelfConsumptionSensor(ctrl, name),
         FeedInSensor(ctrl, name),
-        PVProductionSensor(ctrl, name),
-
-        # === Finanz-Sensoren ===
-        SavingsSelfConsumptionSensor(ctrl, name),
-        EarningsFeedInSensor(ctrl, name),
-
-        # === Effizienz-Sensoren ===
         SelfConsumptionRatioSensor(ctrl, name),
         AutarkyRateSensor(ctrl, name),
 
-        # === Statistik-Sensoren ===
+        # === FINANZEN ===
+        SavingsSelfConsumptionSensor(ctrl, name),
+        EarningsFeedInSensor(ctrl, name),
+
+        # === STATISTIK ===
         AverageDailySavingsSensor(ctrl, name),
         AverageMonthlySavingsSensor(ctrl, name),
         AverageYearlySavingsSensor(ctrl, name),
         DaysSinceInstallationSensor(ctrl, name),
 
-        # === Prognose-Sensoren ===
-        EstimatedRemainingDaysSensor(ctrl, name),
-        EstimatedPaybackDateSensor(ctrl, name),
-
-        # === Umwelt-Sensoren ===
+        # === UMWELT ===
         CO2SavedSensor(ctrl, name),
 
-        # === Konfigurations-Sensoren (Diagnose) ===
+        # === DIAGNOSE ===
         CurrentElectricityPriceSensor(ctrl, name),
         CurrentFeedInTariffSensor(ctrl, name),
+        PVProductionSensor(ctrl, name),
         InstallationCostSensor(ctrl, name),
         ConfigurationDiagnosticSensor(ctrl, name, entry),
     ]
