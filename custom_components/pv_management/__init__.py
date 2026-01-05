@@ -74,6 +74,8 @@ class PVManagementController:
         self._last_known_feed_in_tariff: float | None = None
         self._price_sensor_available = True
         self._tariff_sensor_available = True
+        self._price_fallback_logged = False  # Nur einmal loggen
+        self._tariff_fallback_logged = False
 
         # INKREMENTELL berechnete Werte (werden persistent gespeichert)
         self._total_self_consumption_kwh = 0.0
@@ -184,14 +186,16 @@ class PVManagementController:
             if is_available:
                 # Sensor verfügbar - AUTO-DETECT ob Euro oder Cent
                 self._last_known_electricity_price = raw_price
+                self._price_fallback_logged = False  # Reset für nächstes Mal
                 return self._convert_price_to_eur(raw_price, self.electricity_price_unit, auto_detect=True)
             elif self._last_known_electricity_price is not None:
                 # Sensor nicht verfügbar, aber wir haben einen gecachten Wert
-                _LOGGER.debug("Strompreis-Sensor nicht verfügbar, verwende letzten bekannten Wert")
                 return self._convert_price_to_eur(self._last_known_electricity_price, self.electricity_price_unit, auto_detect=True)
             else:
                 # Kein gecachter Wert, verwende Config-Fallback (manuelle Einheit)
-                _LOGGER.warning("Strompreis-Sensor nicht verfügbar, verwende Konfigurationswert")
+                if not self._price_fallback_logged:
+                    _LOGGER.info("Strompreis-Sensor nicht verfügbar, verwende Konfigurationswert")
+                    self._price_fallback_logged = True
                 return self._convert_price_to_eur(self.electricity_price, self.electricity_price_unit, auto_detect=False)
         else:
             # Kein Sensor konfiguriert, verwende Config-Wert (manuelle Einheit)
@@ -214,12 +218,15 @@ class PVManagementController:
 
             if is_available:
                 self._last_known_feed_in_tariff = raw_tariff
+                self._tariff_fallback_logged = False  # Reset für nächstes Mal
                 return self._convert_price_to_eur(raw_tariff, self.feed_in_tariff_unit, auto_detect=True)
             elif self._last_known_feed_in_tariff is not None:
-                _LOGGER.debug("Einspeise-Tarif-Sensor nicht verfügbar, verwende letzten bekannten Wert")
+                # Sensor nicht verfügbar, aber wir haben einen gecachten Wert
                 return self._convert_price_to_eur(self._last_known_feed_in_tariff, self.feed_in_tariff_unit, auto_detect=True)
             else:
-                _LOGGER.warning("Einspeise-Tarif-Sensor nicht verfügbar, verwende Konfigurationswert")
+                if not self._tariff_fallback_logged:
+                    _LOGGER.info("Einspeise-Tarif-Sensor nicht verfügbar, verwende Konfigurationswert")
+                    self._tariff_fallback_logged = True
                 return self._convert_price_to_eur(self.feed_in_tariff, self.feed_in_tariff_unit, auto_detect=False)
         else:
             self._tariff_sensor_available = True
