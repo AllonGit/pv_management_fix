@@ -226,7 +226,8 @@ class RemainingCostSensor(BaseEntity):
             "Restbetrag",
             unit="€",
             icon="mdi:cash-minus",
-            state_class=SensorStateClass.MEASUREMENT,
+            # state_class muss None sein für device_class=MONETARY (nicht MEASUREMENT)
+            state_class=None,
             device_class=SensorDeviceClass.MONETARY,
         )
 

@@ -42,9 +42,9 @@
           "feed_in_tariff_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Installation",
           "installation_date": "Datum der Installation fuer genaue Statistiken",
-          "savings_offset": "Bereits amortisierter Betrag in Euro",
-          "energy_offset_self_consumption": "Eigenverbrauch vor Beginn des Trackings in kWh",
-          "energy_offset_export": "Einspeisung vor Beginn des Trackings in kWh"
+          "savings_offset": "ACHTUNG: Nur verwenden wenn keine kWh-Offsets eingegeben! Bereits amortisierter Betrag in Euro",
+          "energy_offset_self_consumption": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Eigenverbrauch vor Tracking",
+          "energy_offset_export": "ACHTUNG: Nur verwenden wenn kein Euro-Offset eingegeben! Einspeisung vor Tracking"
         }
       }
     },
@@ -106,9 +106,9 @@
           "feed_in_tariff_entity": "Sensor fuer dynamische Verguetung",
           "installation_cost": "Gesamtkosten der PV-Anlage",
           "installation_date": "Fuer Statistiken und Prognosen",
-          "savings_offset": "Bereits amortisierter Betrag aus Vorzeit",
-          "energy_offset_self_consumption": "Eigenverbrauch vor diesem Tracking",
-          "energy_offset_export": "Einspeisung vor diesem Tracking"
+          "savings_offset": "ACHTUNG: Entweder Euro-Offset ODER kWh-Offsets verwenden, nicht beides!",
+          "energy_offset_self_consumption": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktuellem Preis multipliziert",
+          "energy_offset_export": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktueller Verguetung multipliziert"
         }
       }
     }
