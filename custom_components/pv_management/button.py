@@ -14,7 +14,7 @@ async def async_setup_entry(
     """Setup der Buttons."""
     ctrl = hass.data[DOMAIN][entry.entry_id][DATA_CTRL]
     name = entry.data.get(CONF_NAME, "PV Management")
-    async_add_entities([RefreshButton(ctrl, name)])
+    async_add_entities([RefreshButton(ctrl, name), ResetButton(ctrl, name)])
 
 
 class BaseButton(ButtonEntity):
@@ -43,4 +43,22 @@ class RefreshButton(BaseButton):
 
     async def async_press(self) -> None:
         """Benachrichtigt alle Entities für Update."""
+        self.ctrl._notify_entities()
+
+
+class ResetButton(BaseButton):
+    """Button zum Zurücksetzen aller gespeicherten Daten."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Daten zurücksetzen", icon="mdi:delete-forever")
+
+    async def async_press(self) -> None:
+        """Setzt alle akkumulierten Werte auf 0 zurück."""
+        self.ctrl._total_self_consumption_kwh = 0.0
+        self.ctrl._total_feed_in_kwh = 0.0
+        self.ctrl._accumulated_savings_self = 0.0
+        self.ctrl._accumulated_earnings_feed = 0.0
+        self.ctrl._first_seen_date = None
+        self.ctrl._last_pv_production_kwh = None
+        self.ctrl._last_grid_export_kwh = None
         self.ctrl._notify_entities()
