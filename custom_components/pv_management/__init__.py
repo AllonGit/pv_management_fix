@@ -15,7 +15,7 @@ from .const import (
     CONF_BATTERY_SOC_ENTITY, CONF_PV_POWER_ENTITY, CONF_PV_FORECAST_ENTITY,
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
-    CONF_INSTALLATION_COST,
+    CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_BATTERY_SOC_HIGH, CONF_BATTERY_SOC_LOW,
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
@@ -111,8 +111,9 @@ class PVManagementController:
         self.feed_in_tariff_entity = opts.get(CONF_FEED_IN_TARIFF_ENTITY)
         self.feed_in_tariff_unit = opts.get(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)
 
-        # Kosten
+        # Kosten und Datum
         self.installation_cost = opts.get(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)
+        self.installation_date = opts.get(CONF_INSTALLATION_DATE)
 
         # Empfehlungs-Schwellwerte
         self.battery_soc_high = opts.get(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)
@@ -349,7 +350,19 @@ class PVManagementController:
 
     @property
     def days_since_installation(self) -> int:
-        """Tage seit erstem Tracking."""
+        """Tage seit Installation (oder erstem Tracking)."""
+        # Priorität: Konfiguriertes Installationsdatum
+        if self.installation_date:
+            try:
+                if isinstance(self.installation_date, str):
+                    install_date = datetime.fromisoformat(self.installation_date).date()
+                else:
+                    install_date = self.installation_date
+                return (date.today() - install_date).days
+            except (ValueError, TypeError):
+                pass
+
+        # Fallback: Erstes Tracking-Datum
         if self._first_seen_date:
             return (date.today() - self._first_seen_date).days
         return 0
@@ -572,8 +585,25 @@ class PVManagementController:
         - Eigenverbrauch = PV Produktion - Einspeisung
         - Ersparnis = Eigenverbrauch × Strompreis + Einspeisung × Einspeisevergütung
         """
-        pv_total = self._pv_production_kwh
-        export_total = self._grid_export_kwh
+        # Lese Werte direkt von Sensoren (nicht cached Werte)
+        pv_total = 0.0
+        export_total = 0.0
+
+        if self.pv_production_entity:
+            state = self.hass.states.get(self.pv_production_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    pv_total = float(state.state)
+                except (ValueError, TypeError):
+                    pass
+
+        if self.grid_export_entity:
+            state = self.hass.states.get(self.grid_export_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    export_total = float(state.state)
+                except (ValueError, TypeError):
+                    pass
 
         if pv_total <= 0:
             _LOGGER.info("Keine historischen PV-Daten verfügbar, starte bei 0")
@@ -598,8 +628,9 @@ class PVManagementController:
         self._first_seen_date = date.today()
 
         _LOGGER.info(
-            "PV Management initialisiert mit Sensor-Totals: "
-            "%.2f kWh Eigenverbrauch (%.2f€), %.2f kWh Einspeisung (%.2f€)",
+            "PV Management initialisiert: PV=%.2f, Export=%.2f → "
+            "Eigenverbrauch=%.2f kWh (%.2f€), Einspeisung=%.2f kWh (%.2f€)",
+            pv_total, export_total,
             self_consumption, savings_self,
             feed_in, earnings_feed,
         )
