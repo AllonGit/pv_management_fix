@@ -27,7 +27,7 @@ from .const import (
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
     DEFAULT_PV_PEAK_POWER, DEFAULT_WINTER_BASE_LOAD,
     PRICE_UNIT_CENT,
-    RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_RED,
+    RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_ORANGE, RECOMMENDATION_RED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -667,7 +667,7 @@ class PVManagementController:
             if self._epex_quantile <= 0.2 and is_below_threshold:
                 score += 3  # Sehr günstig (relativ + absolut)
             elif self._epex_quantile <= 0.2:
-                score += 1  # Nur relativ günstig (über Schwelle)
+                score += 2  # Relativ günstig - immer noch guter Deal!
             elif is_below_threshold:
                 score += 2  # Absolut günstig
             elif self._epex_quantile >= 0.8 or is_above_threshold:
@@ -678,8 +678,8 @@ class PVManagementController:
             # Fallback: Nur absoluter Preis
             if is_below_threshold:
                 score += 2  # Günstiger Strom
-            elif price >= self.price_high_threshold:
-                score -= 2  # Teurer Strom -> schlecht
+            elif is_above_threshold:
+                score -= 2  # Teurer Strom
 
         # === Tageszeit ===
         hour = datetime.now().hour
@@ -696,15 +696,17 @@ class PVManagementController:
             elif forecast < 3:
                 score -= 1  # Schlechte Prognose
 
-        # === Auswertung (4 Stufen) ===
+        # === Auswertung (5 Stufen) ===
         if score >= 5:
             return RECOMMENDATION_DARK_GREEN  # Perfekt!
         elif score >= 3:
             return RECOMMENDATION_GREEN  # Jetzt verbrauchen
-        elif score <= -2:
-            return RECOMMENDATION_RED  # Vermeiden
-        else:
+        elif score >= 0:
             return RECOMMENDATION_YELLOW  # Neutral
+        elif score >= -2:
+            return RECOMMENDATION_ORANGE  # Eher ungünstig
+        else:
+            return RECOMMENDATION_RED  # Vermeiden (≤-3)
 
     @property
     def consumption_recommendation_text(self) -> str:
@@ -723,10 +725,12 @@ class PVManagementController:
             prefix = "Idealer Zeitpunkt"
         elif rec == RECOMMENDATION_GREEN:
             prefix = "Guter Zeitpunkt"
+        elif rec == RECOMMENDATION_ORANGE:
+            prefix = "Eher ungünstig"
         elif rec == RECOMMENDATION_RED:
             prefix = "Ungünstig"
         else:
-            # Neutral: Nur Gründe anzeigen, kein Präfix
+            # Neutral (YELLOW): Nur Gründe anzeigen, kein Präfix
             return reasons if reasons else "Neutral"
 
         if reasons:
@@ -738,13 +742,15 @@ class PVManagementController:
         """Farbe für die Ampel (für Dashboards)."""
         rec = self.consumption_recommendation
         if rec == RECOMMENDATION_DARK_GREEN:
-            return "#00aa00"  # Dunkelgrün
+            return "#00bcd4"  # Cyan
         elif rec == RECOMMENDATION_GREEN:
-            return "#44cc44"  # Grün
+            return "#4caf50"  # Grün
         elif rec == RECOMMENDATION_YELLOW:
-            return "#ffcc00"  # Gelb
+            return "#ffeb3b"  # Gelb
+        elif rec == RECOMMENDATION_ORANGE:
+            return "#ff9800"  # Orange
         else:
-            return "#cc0000"  # Rot
+            return "#f44336"  # Rot
 
     def _get_recommendation_reasons(self) -> str:
         """Erstellt menschenlesbare Begründung für die Empfehlung."""
@@ -839,7 +845,7 @@ class PVManagementController:
             if self._epex_quantile <= 0.2 and is_below_threshold:
                 score += 3  # Sehr günstig
             elif self._epex_quantile <= 0.2:
-                score += 1  # Nur relativ günstig
+                score += 2  # Relativ günstig - guter Zeitpunkt!
             elif is_below_threshold:
                 score += 2  # Absolut günstig
             elif self._epex_quantile >= 0.8 or is_above_threshold:
