@@ -769,19 +769,26 @@ class PVManagementController:
             elif self._battery_soc <= self.battery_soc_low:
                 reasons.append("Akku leer")
 
-        # Strompreis (EPEX oder normal)
+        # Strompreis - kombiniere EPEX Quantile mit absolutem Schwellwert
+        price = self.current_electricity_price
+        is_below_threshold = price <= self.price_low_threshold
+        is_above_threshold = price >= self.price_high_threshold
+
         if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
-            if self._epex_quantile <= 0.2:
+            # EPEX verfügbar: Quantile + absoluter Preis
+            if self._epex_quantile <= 0.2 and is_below_threshold:
                 reasons.append("Strom sehr günstig")
-            elif self._epex_quantile <= 0.4:
+            elif self._epex_quantile <= 0.2:
+                reasons.append("Strom günstiger als sonst")  # Relativ günstig, aber über Schwelle
+            elif is_below_threshold:
                 reasons.append("Strom günstig")
-            elif self._epex_quantile >= 0.8:
-                reasons.append("Strom sehr teuer")
-            elif self._epex_quantile >= 0.6:
+            elif self._epex_quantile >= 0.8 or is_above_threshold:
                 reasons.append("Strom teuer")
+            elif self._epex_quantile >= 0.6:
+                reasons.append("Strom teurer als sonst")
         else:
-            price = self.current_electricity_price
-            if price <= self.price_low_threshold:
+            # Kein EPEX: Nur absoluter Preis
+            if is_below_threshold:
                 reasons.append("Strom günstig")
             elif price >= self.price_high_threshold:
                 reasons.append("Strom teuer")
