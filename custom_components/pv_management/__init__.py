@@ -888,6 +888,73 @@ class PVManagementController:
         return self._get_recommendation_reasons()
 
     @property
+    def pv_info(self) -> str:
+        """PV-Status für Card (z.B. 'kaum PV', 'viel PV')."""
+        pv_power = self._pv_power
+        pv_very_high = self.pv_peak_power * 0.6
+        pv_high = self.pv_peak_power * 0.3
+        pv_moderate = self.pv_peak_power * 0.1
+        pv_low = self.pv_peak_power * 0.05
+
+        if pv_power >= pv_very_high:
+            return "sehr viel PV"
+        elif pv_power >= pv_high:
+            return "viel PV"
+        elif pv_power >= pv_moderate:
+            return "etwas PV"
+        elif pv_power <= 0:
+            return "kein PV"
+        elif pv_power < pv_low:
+            return "kaum PV"
+        return "wenig PV"
+
+    @property
+    def akku_info(self) -> str:
+        """Akku-Status für Card (z.B. 'Akku voll', 'Akku leer', oder leer)."""
+        if not self.battery_soc_entity:
+            return ""
+        if self._battery_soc >= self.battery_soc_high:
+            return "Akku voll"
+        elif self._battery_soc <= self.battery_soc_low:
+            return "Akku leer"
+        return ""
+
+    @property
+    def preis_info(self) -> str:
+        """Preis-Status für Card (z.B. 'Strom günstig', oder leer)."""
+        price = self.current_electricity_price
+        is_below = price <= self.price_low_threshold
+        is_above = price >= self.price_high_threshold
+
+        if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
+            if self._epex_quantile <= 0.2 and is_below:
+                return "sehr günstig"
+            elif self._epex_quantile <= 0.2:
+                return "heute günstig"
+            elif is_below:
+                return "Strom günstig"
+            elif self._epex_quantile >= 0.8 or is_above:
+                return "Strom teuer"
+            elif self._epex_quantile >= 0.6:
+                return "heute teuer"
+        else:
+            if is_below:
+                return "Strom günstig"
+            elif is_above:
+                return "Strom teuer"
+        return ""
+
+    @property
+    def pv_tipp(self) -> str:
+        """PV-Prognose Tipp für Card."""
+        return self.next_pv_peak_text
+
+    @property
+    def preis_tipp(self) -> str:
+        """Preis-Prognose Tipp für Card."""
+        return self.next_cheap_hour_text
+
+    @property
     def consumption_recommendation_color(self) -> str:
         """Farbe für die Ampel (für Dashboards)."""
         rec = self.consumption_recommendation
