@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, date
 from typing import Any
 
+import asyncio
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, Event
 from homeassistant.const import EVENT_STATE_CHANGED, STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -1449,10 +1451,19 @@ class PVManagementController:
         self._last_grid_import_kwh = self._grid_import_kwh
         self._last_consumption_kwh = self._consumption_kwh
 
+        # WICHTIG: Warte kurz, damit restore_state() Zeit hat zu laufen!
+        # Die Sensoren (TotalSavingsSensor) rufen async_get_last_state() auf,
+        # was async ist. Ohne diese Wartezeit könnte _initialize_from_sensors()
+        # aufgerufen werden BEVOR restore_state() die Werte setzt.
+        await asyncio.sleep(0.5)
+
         # Wenn keine restored Daten und keine akkumulierten Werte vorhanden,
         # initialisiere mit aktuellen Sensor-Werten (historische Daten)
         if not self._restored and self._total_self_consumption_kwh == 0:
+            _LOGGER.info("Keine restored Daten gefunden, initialisiere von Sensoren")
             self._initialize_from_sensors()
+        elif self._restored:
+            _LOGGER.debug("Restored Daten gefunden, überspringe Initialisierung")
 
         @callback
         def state_listener(event: Event):
