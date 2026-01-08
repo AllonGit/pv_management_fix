@@ -1168,12 +1168,9 @@ class PVManagementController:
 
         self._restored = True
 
-        # WICHTIG: Nach Restore die _last_* Werte auf aktuelle Sensor-Werte setzen
-        # damit das Delta-Tracking korrekt funktioniert
-        self._last_pv_production_kwh = self._pv_production_kwh
-        self._last_grid_export_kwh = self._grid_export_kwh
-        self._last_grid_import_kwh = self._grid_import_kwh
-        self._last_consumption_kwh = self._consumption_kwh
+        # HINWEIS: _last_* Werte werden NICHT hier gesetzt!
+        # Sie werden in async_start() gesetzt nachdem die Sensor-Werte geladen wurden.
+        # Zu diesem Zeitpunkt sind _pv_production_kwh etc. noch 0.0!
 
         _LOGGER.info(
             "PV Management restored: %.2f kWh self, %.2f kWh feed, %.2f€ savings, %.2f€ earnings, first_seen=%s",
@@ -1451,19 +1448,39 @@ class PVManagementController:
         self._last_grid_import_kwh = self._grid_import_kwh
         self._last_consumption_kwh = self._consumption_kwh
 
-        # WICHTIG: Warte kurz, damit restore_state() Zeit hat zu laufen!
-        # Die Sensoren (TotalSavingsSensor) rufen async_get_last_state() auf,
-        # was async ist. Ohne diese Wartezeit könnte _initialize_from_sensors()
-        # aufgerufen werden BEVOR restore_state() die Werte setzt.
-        await asyncio.sleep(0.5)
+        _LOGGER.debug(
+            "async_start: Sensor-Werte geladen - PV=%.2f, Export=%.2f, _restored=%s, _total_self=%.2f",
+            self._pv_production_kwh,
+            self._grid_export_kwh,
+            self._restored,
+            self._total_self_consumption_kwh,
+        )
 
-        # Wenn keine restored Daten und keine akkumulierten Werte vorhanden,
-        # initialisiere mit aktuellen Sensor-Werten (historische Daten)
-        if not self._restored and self._total_self_consumption_kwh == 0:
-            _LOGGER.info("Keine restored Daten gefunden, initialisiere von Sensoren")
-            self._initialize_from_sensors()
-        elif self._restored:
-            _LOGGER.debug("Restored Daten gefunden, überspringe Initialisierung")
+        # NICHT sofort initialisieren! Warte bis restore_state() sicher gelaufen ist.
+        # Verwende async_call_later für robustere Verzögerung.
+        @callback
+        def delayed_init_check(_now: datetime) -> None:
+            """Prüfe nach Verzögerung ob Initialisierung nötig ist."""
+            _LOGGER.debug(
+                "delayed_init_check: _restored=%s, _total_self=%.2f",
+                self._restored,
+                self._total_self_consumption_kwh,
+            )
+            if not self._restored and self._total_self_consumption_kwh == 0:
+                _LOGGER.info(
+                    "Keine restored Daten gefunden nach 2s Wartezeit, initialisiere von Sensoren"
+                )
+                self._initialize_from_sensors()
+            elif self._restored:
+                _LOGGER.info(
+                    "Restored Daten OK: %.2f kWh Eigenverbrauch, %.2f kWh Einspeisung",
+                    self._total_self_consumption_kwh,
+                    self._total_feed_in_kwh,
+                )
+
+        # Warte 2 Sekunden bevor wir prüfen - gibt genug Zeit für restore
+        from homeassistant.helpers.event import async_call_later
+        async_call_later(self.hass, 2.0, delayed_init_check)
 
         @callback
         def state_listener(event: Event):
