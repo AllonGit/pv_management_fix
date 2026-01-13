@@ -923,27 +923,28 @@ class PVManagementController:
 
     @property
     def preis_info(self) -> str:
-        """Preis-Status für Card (z.B. 'Strom günstig', oder leer)."""
+        """Preis-Status für Card (z.B. 'Strom günstig (25ct)', oder leer)."""
         price = self.current_electricity_price
+        price_ct = price * 100  # In Cent für bessere Lesbarkeit
         is_below = price <= self.price_low_threshold
         is_above = price >= self.price_high_threshold
 
         if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
             if self._epex_quantile <= 0.2 and is_below:
-                return "sehr günstig"
+                return f"sehr günstig ({price_ct:.1f}ct)"
             elif self._epex_quantile <= 0.2:
-                return "heute günstig"
+                return f"heute günstig ({price_ct:.1f}ct)"
             elif is_below:
-                return "Strom günstig"
+                return f"Strom günstig ({price_ct:.1f}ct)"
             elif self._epex_quantile >= 0.8 or is_above:
-                return "Strom teuer"
+                return f"Strom teuer ({price_ct:.1f}ct)"
             elif self._epex_quantile >= 0.6:
-                return "heute teuer"
+                return f"heute teuer ({price_ct:.1f}ct)"
         else:
             if is_below:
-                return "Strom günstig"
+                return f"Strom günstig ({price_ct:.1f}ct)"
             elif is_above:
-                return "Strom teuer"
+                return f"Strom teuer ({price_ct:.1f}ct)"
         return ""
 
     @property
@@ -1006,27 +1007,28 @@ class PVManagementController:
 
         # Strompreis - kombiniere EPEX Quantile mit absolutem Schwellwert
         price = self.current_electricity_price
+        price_ct = price * 100  # In Cent für bessere Lesbarkeit
         is_below_threshold = price <= self.price_low_threshold
         is_above_threshold = price >= self.price_high_threshold
 
         if self.epex_quantile_entity and 0 <= self._epex_quantile <= 1:
             # EPEX verfügbar: Quantile + absoluter Preis
             if self._epex_quantile <= 0.2 and is_below_threshold:
-                reasons.append("sehr günstig")
+                reasons.append(f"sehr günstig ({price_ct:.1f}ct)")
             elif self._epex_quantile <= 0.2:
-                reasons.append("heute günstig")  # Relativ günstig, aber über Schwelle
+                reasons.append(f"heute günstig ({price_ct:.1f}ct)")  # Relativ günstig, aber über Schwelle
             elif is_below_threshold:
-                reasons.append("Strom günstig")
+                reasons.append(f"Strom günstig ({price_ct:.1f}ct)")
             elif self._epex_quantile >= 0.8 or is_above_threshold:
-                reasons.append("Strom teuer")
+                reasons.append(f"Strom teuer ({price_ct:.1f}ct)")
             elif self._epex_quantile >= 0.6:
-                reasons.append("heute teuer")  # Relativ teuer
+                reasons.append(f"heute teuer ({price_ct:.1f}ct)")  # Relativ teuer
         else:
             # Kein EPEX: Nur absoluter Preis
             if is_below_threshold:
-                reasons.append("Strom günstig")
+                reasons.append(f"Strom günstig ({price_ct:.1f}ct)")
             elif is_above_threshold:
-                reasons.append("Strom teuer")
+                reasons.append(f"Strom teuer ({price_ct:.1f}ct)")
 
         return ", ".join(reasons) if reasons else ""
 
@@ -1181,6 +1183,16 @@ class PVManagementController:
             self._first_seen_date,
         )
 
+        # Verzögerte Benachrichtigung aller Entities nach Restore
+        # (damit alle Entities registriert sind und die korrekten Werte anzeigen)
+        @callback
+        def delayed_restore_notify(_now):
+            _LOGGER.debug("Delayed restore notify: Aktualisiere alle Entities nach Restore")
+            self._notify_entities()
+
+        from homeassistant.helpers.event import async_call_later
+        async_call_later(self.hass, 5.0, delayed_restore_notify)
+
     def _initialize_from_sensors(self) -> None:
         """
         Initialisiert die Werte mit den aktuellen Sensor-Totals.
@@ -1239,6 +1251,9 @@ class PVManagementController:
             self_consumption, savings_self,
             feed_in, earnings_feed,
         )
+
+        # Benachrichtige alle Entities über die initialisierten Werte
+        self._notify_entities()
 
     def get_state_for_storage(self) -> dict[str, Any]:
         """Gibt den zu speichernden Zustand zurück."""

@@ -211,6 +211,9 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             self.ctrl.restore_state(restore_data)
             _LOGGER.info("TotalSavingsSensor: Zustand wiederhergestellt")
 
+            # Explizites State-Update nach Restore
+            self.async_write_ha_state()
+
     @property
     def native_value(self) -> float:
         return round(self.ctrl.total_savings, 2)
