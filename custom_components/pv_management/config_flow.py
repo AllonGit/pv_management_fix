@@ -345,10 +345,10 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                         selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
                     ),
 
-                # SOC im Sommer (normale Entladung, z.B. 1%)
+                # SOC im Sommer (normale Entladung, z.B. 10%)
                 vol.Optional(CONF_DISCHARGE_SUMMER_SOC, default=self._get_val(CONF_DISCHARGE_SUMMER_SOC, DEFAULT_DISCHARGE_SUMMER_SOC)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=1.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX)
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
                     ),
             })
         )
