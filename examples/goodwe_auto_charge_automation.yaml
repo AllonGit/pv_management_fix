@@ -1,0 +1,110 @@
+# =============================================================================
+# GoodWe Auto-Charge Automatisierung
+# =============================================================================
+# Diese Automatisierung lädt die Batterie automatisch wenn:
+# - PV-Prognose niedrig ist (schlechtes Wetter)
+# - Strompreis günstig ist (EPEX Quantile niedrig)
+# - Batterie-SOC unter Minimum ist
+#
+# WICHTIG: Passe die Entity-IDs an dein System an!
+# =============================================================================
+
+automation:
+  # -------------------------------------------------------------------------
+  # Batterie laden starten wenn Bedingungen erfüllt
+  # -------------------------------------------------------------------------
+  - id: pv_management_auto_charge_start
+    alias: "PV Management: Batterie laden starten"
+    description: "Startet Batterie-Laden bei günstigem Strom und schlechter PV-Prognose"
+
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.pv_management_auto_charge_empfehlung
+        to: "on"
+
+    condition:
+      # Nur wenn Auto-Charge Switch aktiviert ist
+      - condition: state
+        entity_id: switch.pv_management_auto_charge
+        state: "on"
+
+    action:
+      # 1. Setze Ziel-SOC (z.B. 80%)
+      - service: number.set_value
+        target:
+          entity_id: number.goodwe_eco_mode_soc  # <-- ANPASSEN falls anders benannt
+        data:
+          value: 80
+
+      # 2. Setze Ladeleistung (z.B. 3000W)
+      - service: number.set_value
+        target:
+          entity_id: number.goodwe_eco_mode_power  # <-- ANPASSEN falls anders benannt
+        data:
+          value: 3000
+
+      # 3. Aktiviere Eco Charge Modus
+      - service: select.select_option
+        target:
+          entity_id: select.goodwe_operation_mode  # <-- ANPASSEN falls anders benannt
+        data:
+          option: "Eco Charge"  # <-- ANPASSEN: könnte auch "eco_charge" oder "Eco charge" sein
+
+      # 4. Optional: Benachrichtigung
+      - service: persistent_notification.create
+        data:
+          title: "Batterie-Laden gestartet"
+          message: >
+            Auto-Charge aktiviert bei günstigem Strompreis.
+            Ziel-SOC: 80%
+
+  # -------------------------------------------------------------------------
+  # Batterie laden stoppen wenn Bedingungen nicht mehr erfüllt
+  # -------------------------------------------------------------------------
+  - id: pv_management_auto_charge_stop
+    alias: "PV Management: Batterie laden stoppen"
+    description: "Stoppt Batterie-Laden und wechselt zurück zu Normal-Modus"
+
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.pv_management_auto_charge_empfehlung
+        to: "off"
+        # Nur stoppen wenn vorher "on" war (nicht bei unavailable etc.)
+        from: "on"
+
+    condition:
+      # Nur wenn Auto-Charge Switch aktiviert ist
+      - condition: state
+        entity_id: switch.pv_management_auto_charge
+        state: "on"
+
+    action:
+      # Zurück zu Normal-Modus (General)
+      - service: select.select_option
+        target:
+          entity_id: select.goodwe_operation_mode  # <-- ANPASSEN falls anders benannt
+        data:
+          option: "General"  # <-- ANPASSEN: könnte auch "general" oder "Normal" sein
+
+      # Optional: Benachrichtigung
+      - service: persistent_notification.create
+        data:
+          title: "Batterie-Laden beendet"
+          message: "Zurück zu Normal-Modus."
+
+
+# =============================================================================
+# ALTERNATIVE: Falls du switch Entities statt select hast
+# =============================================================================
+# Manche GoodWe Setups haben einen direkten Switch:
+#
+#   - service: switch.turn_on
+#     target:
+#       entity_id: switch.goodwe_eco_charge
+#
+# Und zum Stoppen:
+#
+#   - service: switch.turn_off
+#     target:
+#       entity_id: switch.goodwe_eco_charge
+# =============================================================================
