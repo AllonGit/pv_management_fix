@@ -10,20 +10,12 @@
           "grid_export_entity": "Netzeinspeisung Sensor (kWh, optional)",
           "grid_import_entity": "Netzbezug Sensor (kWh, optional)",
           "consumption_entity": "Hausverbrauch Sensor (kWh, optional)",
-          "battery_soc_entity": "Batterie-Ladestand Sensor (%, optional)",
-          "pv_power_entity": "PV-Leistung Sensor (W, optional)",
-          "pv_forecast_entity": "PV-Prognose Sensor (kWh, optional)",
           "electricity_price_unit": "Strompreis-Einheit",
           "electricity_price": "Strompreis (Fallback)",
-          "electricity_price_entity": "Dynamischer Strompreis Sensor (optional)",
           "feed_in_tariff_unit": "Einspeiseverguetung-Einheit",
           "feed_in_tariff": "Einspeiseverguetung (Fallback)",
-          "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor (optional)",
           "installation_cost": "Anschaffungskosten",
-          "installation_date": "Installationsdatum (optional)",
-          "savings_offset": "Bereits amortisiert (Offset)",
-          "energy_offset_self_consumption": "Eigenverbrauch vor Tracking (kWh)",
-          "energy_offset_export": "Einspeisung vor Tracking (kWh)"
+          "installation_date": "Installationsdatum (optional)"
         },
         "data_description": {
           "name": "Name fuer diese PV-Anlage",
@@ -31,20 +23,12 @@
           "grid_export_entity": "Sensor fuer Netzeinspeisung in kWh",
           "grid_import_entity": "Sensor fuer Netzbezug in kWh",
           "consumption_entity": "Sensor fuer Gesamtverbrauch des Haushalts in kWh",
-          "battery_soc_entity": "Sensor fuer Batterie-Ladestand in % (fuer Empfehlung)",
-          "pv_power_entity": "Sensor fuer aktuelle PV-Leistung in W (fuer Empfehlung)",
-          "pv_forecast_entity": "Sensor fuer PV-Tagesprognose in kWh (fuer Empfehlung)",
           "electricity_price_unit": "Waehle ob der Strompreis in Euro oder Cent pro kWh angegeben wird",
           "electricity_price": "Wird verwendet wenn kein Sensor konfiguriert oder Sensor nicht verfuegbar",
-          "electricity_price_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
           "feed_in_tariff_unit": "Waehle ob die Einspeiseverguetung in Euro oder Cent pro kWh angegeben wird",
           "feed_in_tariff": "Wird verwendet wenn kein Sensor konfiguriert oder Sensor nicht verfuegbar",
-          "feed_in_tariff_entity": "Wenn konfiguriert, wird dieser Wert verwendet. Bei Ausfall: Fallback auf obigen Wert",
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Installation",
-          "installation_date": "Datum der Installation fuer genaue Statistiken",
-          "savings_offset": "Bereits amortisierter Betrag in Euro",
-          "energy_offset_self_consumption": "Eigenverbrauch vor Beginn des Trackings in kWh",
-          "energy_offset_export": "Einspeisung vor Beginn des Trackings in kWh"
+          "installation_date": "Datum der Installation fuer genaue Statistiken"
         }
       }
     },
@@ -58,81 +42,116 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Management Optionen",
-        "description": "Passe die Einstellungen an. Sensoren koennen nachtraeglich geaendert werden ohne Datenverlust.",
+        "title": "PV Management Einstellungen",
+        "description": "Waehle eine Kategorie zum Bearbeiten:",
+        "menu_options": {
+          "sensors": "Sensoren konfigurieren",
+          "prices": "Strompreise & Amortisation",
+          "integrations": "Integrationen (EPEX/Solcast)",
+          "auto_charge": "Auto-Charge Batterie",
+          "advanced": "Erweiterte Einstellungen"
+        }
+      },
+      "sensors": {
+        "title": "Sensoren",
+        "description": "Konfiguriere die Energie-Sensoren fuer PV, Netz und Batterie.",
         "data": {
-          "pv_production_entity": "PV Produktion Sensor",
-          "grid_export_entity": "Netzeinspeisung Sensor",
-          "grid_import_entity": "Netzbezug Sensor",
-          "consumption_entity": "Hausverbrauch Sensor",
-          "battery_soc_entity": "Batterie-Ladestand Sensor",
-          "pv_power_entity": "PV-Leistung Sensor",
-          "pv_forecast_entity": "PV-Prognose Sensor",
-          "battery_soc_high": "Batterie 'voll' Schwelle (%)",
-          "battery_soc_low": "Batterie 'leer' Schwelle (%)",
-          "pv_power_high": "PV 'hoch' Schwelle (W)",
-          "price_low_threshold": "Preis 'guenstig' Schwelle",
-          "price_high_threshold": "Preis 'teuer' Schwelle",
+          "pv_production_entity": "PV Produktion (kWh)",
+          "grid_export_entity": "Netzeinspeisung (kWh)",
+          "grid_import_entity": "Netzbezug (kWh)",
+          "consumption_entity": "Hausverbrauch (kWh)",
+          "battery_soc_entity": "Batterie-Ladestand (%)",
+          "pv_power_entity": "Aktuelle PV-Leistung (W)",
+          "pv_forecast_entity": "PV-Prognose (kWh)"
+        },
+        "data_description": {
+          "pv_production_entity": "Gesamte PV-Produktion in kWh (steigender Zaehler)",
+          "grid_export_entity": "Netzeinspeisung in kWh (steigender Zaehler)",
+          "grid_import_entity": "Netzbezug in kWh (steigender Zaehler)",
+          "consumption_entity": "Gesamtverbrauch in kWh (steigender Zaehler)",
+          "battery_soc_entity": "Aktueller Batterie-Ladestand in Prozent",
+          "pv_power_entity": "Aktuelle PV-Leistung in Watt (fuer Empfehlung)",
+          "pv_forecast_entity": "Tages-PV-Prognose in kWh (fuer Empfehlung)"
+        }
+      },
+      "prices": {
+        "title": "Strompreise & Amortisation",
+        "description": "Konfiguriere Strompreis, Einspeiseverguetung und Anschaffungskosten.",
+        "data": {
           "electricity_price_unit": "Strompreis-Einheit",
           "electricity_price": "Strompreis (Fallback)",
           "electricity_price_entity": "Dynamischer Strompreis Sensor",
           "feed_in_tariff_unit": "Einspeiseverguetung-Einheit",
           "feed_in_tariff": "Einspeiseverguetung (Fallback)",
-          "feed_in_tariff_entity": "Dynamische Einspeiseverguetung Sensor",
+          "feed_in_tariff_entity": "Dynamische Einspeiseverguetung",
           "installation_cost": "Anschaffungskosten",
-          "installation_date": "Installationsdatum",
-          "savings_offset": "Ersparnis-Offset",
-          "energy_offset_self_consumption": "Eigenverbrauch-Offset (kWh)",
-          "energy_offset_export": "Einspeisung-Offset (kWh)",
-          "pv_peak_power": "PV Peak-Leistung (W)",
-          "winter_base_load": "Winter-Grundlast (W)",
-          "epex_price_entity": "EPEX Spot Preis Sensor",
-          "epex_quantile_entity": "EPEX Quantile Sensor",
-          "solcast_forecast_entity": "Solcast Prognose Sensor",
-          "auto_charge_winter_only": "Auto-Charge: Nur im Winter",
-          "auto_charge_pv_threshold": "Auto-Charge: PV-Prognose Schwelle",
-          "auto_charge_price_quantile": "Auto-Charge: Preis-Quantile Schwelle",
-          "auto_charge_min_soc": "Auto-Charge: Min. Batterie-SOC",
-          "auto_charge_target_soc": "Auto-Charge: Ziel Batterie-SOC",
-          "auto_charge_min_price_diff": "Auto-Charge: Min. Preisdifferenz",
-          "auto_charge_power": "Auto-Charge: Ladeleistung"
+          "installation_date": "Installationsdatum"
         },
         "data_description": {
-          "pv_production_entity": "Sensor fuer PV-Produktion in kWh",
-          "grid_export_entity": "Sensor fuer Netzeinspeisung",
-          "grid_import_entity": "Sensor fuer Netzbezug",
-          "consumption_entity": "Sensor fuer Hausverbrauch",
-          "battery_soc_entity": "Sensor fuer Batterie-Ladestand (Ampel)",
-          "pv_power_entity": "Sensor fuer aktuelle PV-Leistung (Ampel)",
-          "pv_forecast_entity": "Sensor fuer PV-Prognose (Ampel)",
-          "battery_soc_high": "Ab diesem Wert gilt Batterie als voll",
-          "battery_soc_low": "Unter diesem Wert gilt Batterie als leer",
-          "pv_power_high": "Ab diesem Wert gilt PV-Leistung als hoch",
-          "price_low_threshold": "Unter diesem Preis ist Strom guenstig",
-          "price_high_threshold": "Ueber diesem Preis ist Strom teuer",
           "electricity_price_unit": "Euro oder Cent pro kWh",
-          "electricity_price": "Wird verwendet wenn Sensor nicht verfuegbar",
-          "electricity_price_entity": "Sensor fuer dynamischen Strompreis",
+          "electricity_price": "Wird verwendet wenn kein Sensor konfiguriert",
+          "electricity_price_entity": "Optional: Sensor fuer dynamischen Strompreis (z.B. EPEX)",
           "feed_in_tariff_unit": "Euro oder Cent pro kWh",
-          "feed_in_tariff": "Wird verwendet wenn Sensor nicht verfuegbar",
-          "feed_in_tariff_entity": "Sensor fuer dynamische Verguetung",
-          "installation_cost": "Gesamtkosten der PV-Anlage",
-          "installation_date": "Fuer Statistiken und Prognosen",
-          "savings_offset": "Bereits amortisierter Betrag aus Vorzeit",
-          "energy_offset_self_consumption": "Eigenverbrauch vor diesem Tracking",
-          "energy_offset_export": "Einspeisung vor diesem Tracking",
+          "feed_in_tariff": "Wird verwendet wenn kein Sensor konfiguriert",
+          "feed_in_tariff_entity": "Optional: Sensor fuer dynamische Verguetung",
+          "installation_cost": "Gesamtkosten der PV-Anlage in Euro",
+          "installation_date": "Fuer Statistiken und Prognosen"
+        }
+      },
+      "integrations": {
+        "title": "Integrationen",
+        "description": "Verbinde mit EPEX Spot und Solcast fuer bessere Empfehlungen.",
+        "data": {
+          "epex_price_entity": "EPEX Spot Preis",
+          "epex_quantile_entity": "EPEX Quantile",
+          "solcast_forecast_entity": "Solcast Prognose"
+        },
+        "data_description": {
+          "epex_price_entity": "Aktueller EPEX Spot Strompreis Sensor",
+          "epex_quantile_entity": "EPEX Quantile (0=billigster, 1=teuerster Preis des Tages)",
+          "solcast_forecast_entity": "Solcast PV-Prognose fuer heute in kWh"
+        }
+      },
+      "auto_charge": {
+        "title": "Auto-Charge Batterie",
+        "description": "Automatisches Laden der Batterie bei guenstigen Strompreisen.\n\nDer Binary Sensor zeigt an wann geladen werden sollte.",
+        "data": {
+          "auto_charge_winter_only": "Nur im Winter laden",
+          "auto_charge_pv_threshold": "PV-Prognose Schwelle",
+          "auto_charge_price_quantile": "Preis-Quantile Schwelle",
+          "auto_charge_min_price_diff": "Min. Preisdifferenz",
+          "auto_charge_min_soc": "Min. Batterie-SOC",
+          "auto_charge_target_soc": "Ziel Batterie-SOC",
+          "auto_charge_power": "Ladeleistung"
+        },
+        "data_description": {
+          "auto_charge_winter_only": "Wenn aktiviert, nur von Oktober bis Maerz laden (im Sommer reicht PV)",
+          "auto_charge_pv_threshold": "Unter dieser PV-Prognose wird Laden empfohlen (schlechtes Wetter)",
+          "auto_charge_price_quantile": "0=billigste Stunde, 1=teuerste. Bei 0.2 nur laden wenn Preis in den guenstigsten 20%",
+          "auto_charge_min_price_diff": "Nur laden wenn Differenz zwischen billig/teuer mindestens so gross ist (Ladeverluste!)",
+          "auto_charge_min_soc": "Nur laden wenn Batterie UNTER diesem Wert ist",
+          "auto_charge_target_soc": "Bis wohin geladen werden soll",
+          "auto_charge_power": "Mit welcher Leistung geladen werden soll"
+        }
+      },
+      "advanced": {
+        "title": "Erweiterte Einstellungen",
+        "description": "Schwellwerte fuer die Empfehlungs-Ampel und PV-Anlagen-Konfiguration.",
+        "data": {
+          "pv_peak_power": "PV Peak-Leistung",
+          "winter_base_load": "Winter-Grundlast",
+          "battery_soc_high": "Batterie 'voll' Schwelle",
+          "battery_soc_low": "Batterie 'leer' Schwelle",
+          "price_low_threshold": "Preis 'guenstig' Schwelle",
+          "price_high_threshold": "Preis 'teuer' Schwelle"
+        },
+        "data_description": {
           "pv_peak_power": "Peak-Leistung deiner PV-Anlage in Watt (z.B. 10000 fuer 10kWp)",
-          "winter_base_load": "Grundlast im Winter die von PV abgezogen wird (z.B. Waermepumpe)",
-          "epex_price_entity": "EPEX Spot Strompreis Sensor (fuer Empfehlung)",
-          "epex_quantile_entity": "EPEX Quantile Sensor (0=guenstigster, 1=teuerster Preis des Tages)",
-          "solcast_forecast_entity": "Solcast PV-Prognose Sensor fuer heute",
-          "auto_charge_winter_only": "Wenn aktiviert, wird Auto-Charge nur im Winter (Oktober bis Maerz) aktiv",
-          "auto_charge_pv_threshold": "Unter dieser PV-Prognose wird Laden empfohlen",
-          "auto_charge_price_quantile": "Unter diesem Quantile-Wert ist der Preis guenstig genug zum Laden",
-          "auto_charge_min_soc": "Nur laden wenn Batterie unter diesem SOC ist",
-          "auto_charge_target_soc": "Ziel-SOC beim automatischen Laden",
-          "auto_charge_min_price_diff": "Nur laden wenn Differenz zwischen billigstem und teuerstem Preis des Tages mindestens so gross ist",
-          "auto_charge_power": "Mit welcher Leistung die Batterie geladen werden soll"
+          "winter_base_load": "Grundlast im Winter (z.B. Waermepumpe) - wird von verfuegbarer PV abgezogen",
+          "battery_soc_high": "Ab diesem Wert gilt Batterie als voll (fuer Ampel)",
+          "battery_soc_low": "Unter diesem Wert gilt Batterie als leer (fuer Ampel)",
+          "price_low_threshold": "Unter diesem Preis ist Strom guenstig (fuer Ampel)",
+          "price_high_threshold": "Ueber diesem Preis ist Strom teuer (fuer Ampel)"
         }
       }
     }

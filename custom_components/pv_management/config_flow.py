@@ -32,8 +32,6 @@ from .const import (
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
 
-# Hinweis: Für Autarkiegrad benötigst du einen Verbrauchs-Sensor in kWh (nicht Watt!)
-
 
 class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config Flow für PV Management."""
@@ -64,30 +62,6 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.EntitySelectorConfig(domain="sensor")
                 ),
 
-                # === EMPFEHLUNGS-SENSOREN ===
-                vol.Optional(CONF_BATTERY_SOC_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_PV_POWER_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_PV_FORECAST_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-
-                # === EPEX SPOT INTEGRATION ===
-                vol.Optional(CONF_EPEX_PRICE_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_EPEX_QUANTILE_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-
-                # === SOLCAST INTEGRATION ===
-                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-
                 # === PREISE ===
                 vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=DEFAULT_ELECTRICITY_PRICE_UNIT):
                     selector.SelectSelector(
@@ -106,9 +80,6 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
-                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
 
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=DEFAULT_FEED_IN_TARIFF_UNIT):
                     selector.SelectSelector(
@@ -127,9 +98,6 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
-                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
 
                 # === AMORTISATION ===
                 vol.Required(CONF_INSTALLATION_COST, default=DEFAULT_INSTALLATION_COST):
@@ -150,222 +118,241 @@ class PVManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class PVManagementOptionsFlow(config_entries.OptionsFlow):
-    """Options Flow für nachträgliche Anpassungen."""
+    """Options Flow mit Menü-Struktur."""
+
+    def __init__(self):
+        self._data = {}
+
+    def _get_val(self, key, default=None):
+        """Holt aktuellen Wert aus Options oder Data."""
+        # Zuerst in temporären Daten schauen
+        if key in self._data:
+            return self._data[key]
+        # Dann in Options
+        if key in self.config_entry.options:
+            return self.config_entry.options[key]
+        # Dann in Data
+        if key in self.config_entry.data:
+            return self.config_entry.data[key]
+        return default
 
     async def async_step_init(self, user_input=None):
-        """Options bearbeiten."""
+        """Hauptmenü mit Kategorien."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options={
+                "sensors": "Sensoren",
+                "prices": "Strompreise",
+                "integrations": "Integrationen (EPEX/Solcast)",
+                "auto_charge": "Auto-Charge Batterie",
+                "advanced": "Erweiterte Einstellungen",
+            },
+        )
+
+    async def async_step_sensors(self, user_input=None):
+        """Energie-Sensoren konfigurieren."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        # Aktuelle Werte holen (Options überschreiben Data)
-        data = self.config_entry.data
-        opts = self.config_entry.options
-
-        # Helper um aktuellen Wert zu holen
-        def get_val(key, default=None):
-            return opts.get(key, data.get(key, default))
+            self._data.update(user_input)
+            return await self.async_step_init()
 
         return self.async_show_form(
-            step_id="init",
+            step_id="sensors",
             data_schema=vol.Schema({
-                # === ENERGIE-SENSOREN (kWh Totals) ===
-                vol.Required(CONF_PV_PRODUCTION_ENTITY, default=get_val(CONF_PV_PRODUCTION_ENTITY)):
+                vol.Required(CONF_PV_PRODUCTION_ENTITY, default=self._get_val(CONF_PV_PRODUCTION_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_GRID_EXPORT_ENTITY, default=get_val(CONF_GRID_EXPORT_ENTITY)):
+                vol.Optional(CONF_GRID_EXPORT_ENTITY, default=self._get_val(CONF_GRID_EXPORT_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_GRID_IMPORT_ENTITY, default=get_val(CONF_GRID_IMPORT_ENTITY)):
+                vol.Optional(CONF_GRID_IMPORT_ENTITY, default=self._get_val(CONF_GRID_IMPORT_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_CONSUMPTION_ENTITY, default=get_val(CONF_CONSUMPTION_ENTITY)):
+                vol.Optional(CONF_CONSUMPTION_ENTITY, default=self._get_val(CONF_CONSUMPTION_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_BATTERY_SOC_ENTITY, default=self._get_val(CONF_BATTERY_SOC_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_POWER_ENTITY, default=self._get_val(CONF_PV_POWER_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_FORECAST_ENTITY, default=self._get_val(CONF_PV_FORECAST_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            })
+        )
+
+    async def async_step_prices(self, user_input=None):
+        """Strompreise konfigurieren."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_init()
+
+        return self.async_show_form(
+            step_id="prices",
+            data_schema=vol.Schema({
+                # Strompreis
+                vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=self._get_val(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)):
+                    selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value=PRICE_UNIT_EUR, label="Euro pro kWh"),
+                                selector.SelectOptionDict(value=PRICE_UNIT_CENT, label="Cent pro kWh"),
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                vol.Required(CONF_ELECTRICITY_PRICE, default=self._get_val(CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=0.01, mode=selector.NumberSelectorMode.BOX)
+                    ),
+                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=self._get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
-                # === EMPFEHLUNGS-SENSOREN ===
-                vol.Optional(CONF_BATTERY_SOC_ENTITY, default=get_val(CONF_BATTERY_SOC_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_PV_POWER_ENTITY, default=get_val(CONF_PV_POWER_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_PV_FORECAST_ENTITY, default=get_val(CONF_PV_FORECAST_ENTITY)):
+                # Einspeisevergütung
+                vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=self._get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):
+                    selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value=PRICE_UNIT_EUR, label="Euro pro kWh"),
+                                selector.SelectOptionDict(value=PRICE_UNIT_CENT, label="Cent pro kWh"),
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                vol.Required(CONF_FEED_IN_TARIFF, default=self._get_val(CONF_FEED_IN_TARIFF, DEFAULT_FEED_IN_TARIFF)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.001, mode=selector.NumberSelectorMode.BOX)
+                    ),
+                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY, default=self._get_val(CONF_FEED_IN_TARIFF_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
-                # === AMORTISATION ===
-                vol.Required(CONF_INSTALLATION_COST, default=get_val(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)):
+                # Amortisation
+                vol.Required(CONF_INSTALLATION_COST, default=self._get_val(CONF_INSTALLATION_COST, DEFAULT_INSTALLATION_COST)):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=RANGE_COST["min"], max=RANGE_COST["max"], step=RANGE_COST["step"],
-                            unit_of_measurement="€",
-                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="€", mode=selector.NumberSelectorMode.BOX
                         )
                     ),
-                vol.Optional(CONF_INSTALLATION_DATE, default=get_val(CONF_INSTALLATION_DATE)):
+                vol.Optional(CONF_INSTALLATION_DATE, default=self._get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
+            })
+        )
 
-                # === PREISE ===
-                vol.Required(CONF_ELECTRICITY_PRICE_UNIT, default=get_val(CONF_ELECTRICITY_PRICE_UNIT, DEFAULT_ELECTRICITY_PRICE_UNIT)):
-                    selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=[
-                                selector.SelectOptionDict(value=PRICE_UNIT_EUR, label="Euro pro kWh"),
-                                selector.SelectOptionDict(value=PRICE_UNIT_CENT, label="Cent pro kWh"),
-                            ],
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
+    async def async_step_integrations(self, user_input=None):
+        """EPEX Spot und Solcast Integrationen."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_init()
 
-                vol.Required(CONF_ELECTRICITY_PRICE, default=get_val(CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=100.0, step=0.01,
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
+        return self.async_show_form(
+            step_id="integrations",
+            data_schema=vol.Schema({
+                # EPEX Spot
+                vol.Optional(CONF_EPEX_PRICE_ENTITY, default=self._get_val(CONF_EPEX_PRICE_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_EPEX_QUANTILE_ENTITY, default=self._get_val(CONF_EPEX_QUANTILE_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
-                vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):
-                    selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=[
-                                selector.SelectOptionDict(value=PRICE_UNIT_EUR, label="Euro pro kWh"),
-                                selector.SelectOptionDict(value=PRICE_UNIT_CENT, label="Cent pro kWh"),
-                            ],
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-
-                vol.Required(CONF_FEED_IN_TARIFF, default=get_val(CONF_FEED_IN_TARIFF, DEFAULT_FEED_IN_TARIFF)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=50.0, step=0.001,
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY, default=get_val(CONF_FEED_IN_TARIFF_ENTITY)):
+                # Solcast
+                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY, default=self._get_val(CONF_SOLCAST_FORECAST_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            })
+        )
 
-                # === EMPFEHLUNGS-SCHWELLWERTE ===
-                vol.Optional(CONF_BATTERY_SOC_HIGH, default=get_val(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_BATTERY_SOC["min"], max=RANGE_BATTERY_SOC["max"],
-                            step=RANGE_BATTERY_SOC["step"],
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
+    async def async_step_auto_charge(self, user_input=None):
+        """Auto-Charge Batterie Einstellungen."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_init()
 
-                vol.Optional(CONF_BATTERY_SOC_LOW, default=get_val(CONF_BATTERY_SOC_LOW, DEFAULT_BATTERY_SOC_LOW)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=RANGE_BATTERY_SOC["min"], max=RANGE_BATTERY_SOC["max"],
-                            step=RANGE_BATTERY_SOC["step"],
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_PV_PEAK_POWER, default=get_val(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1000.0, max=100000.0,
-                            step=100.0,
-                            unit_of_measurement="W",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                # Grundlast für Winter (z.B. Wärmepumpe) - wird von PV abgezogen (Okt-März)
-                vol.Optional(CONF_WINTER_BASE_LOAD, default=get_val(CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=10000.0,
-                            step=100.0,
-                            unit_of_measurement="W",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_PRICE_LOW_THRESHOLD, default=get_val(CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=1.0, step=0.01,
-                            unit_of_measurement="€/kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                vol.Optional(CONF_PRICE_HIGH_THRESHOLD, default=get_val(CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)):
-                    selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=1.0, step=0.01,
-                            unit_of_measurement="€/kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-
-                # === EPEX SPOT INTEGRATION ===
-                vol.Optional(CONF_EPEX_PRICE_ENTITY, default=get_val(CONF_EPEX_PRICE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                vol.Optional(CONF_EPEX_QUANTILE_ENTITY, default=get_val(CONF_EPEX_QUANTILE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-
-                # === SOLCAST INTEGRATION ===
-                vol.Optional(CONF_SOLCAST_FORECAST_ENTITY, default=get_val(CONF_SOLCAST_FORECAST_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-
-                # === AUTO-CHARGE EINSTELLUNGEN ===
-                vol.Optional(CONF_AUTO_CHARGE_WINTER_ONLY, default=get_val(CONF_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_WINTER_ONLY)):
+        return self.async_show_form(
+            step_id="auto_charge",
+            data_schema=vol.Schema({
+                # Basis-Einstellungen
+                vol.Optional(CONF_AUTO_CHARGE_WINTER_ONLY, default=self._get_val(CONF_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_WINTER_ONLY)):
                     selector.BooleanSelector(),
 
-                vol.Optional(CONF_AUTO_CHARGE_PV_THRESHOLD, default=get_val(CONF_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PV_THRESHOLD)):
+                vol.Optional(CONF_AUTO_CHARGE_PV_THRESHOLD, default=self._get_val(CONF_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PV_THRESHOLD)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=50.0, step=0.5,
-                            unit_of_measurement="kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
+                        selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.5, unit_of_measurement="kWh", mode=selector.NumberSelectorMode.BOX)
                     ),
 
-                vol.Optional(CONF_AUTO_CHARGE_PRICE_QUANTILE, default=get_val(CONF_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE)):
+                vol.Optional(CONF_AUTO_CHARGE_PRICE_QUANTILE, default=self._get_val(CONF_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=1.0, step=0.05,
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
                     ),
 
-                vol.Optional(CONF_AUTO_CHARGE_MIN_SOC, default=get_val(CONF_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_MIN_SOC)):
+                vol.Optional(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, default=self._get_val(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=100.0, step=5.0,
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        selector.NumberSelectorConfig(min=0.0, max=30.0, step=0.5, unit_of_measurement="ct/kWh", mode=selector.NumberSelectorMode.BOX)
                     ),
 
-                vol.Optional(CONF_AUTO_CHARGE_TARGET_SOC, default=get_val(CONF_AUTO_CHARGE_TARGET_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC)):
+                vol.Optional(CONF_AUTO_CHARGE_MIN_SOC, default=self._get_val(CONF_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_MIN_SOC)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=100.0, step=5.0,
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
                     ),
 
-                vol.Optional(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, default=get_val(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF)):
+                vol.Optional(CONF_AUTO_CHARGE_TARGET_SOC, default=self._get_val(CONF_AUTO_CHARGE_TARGET_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0, max=30.0, step=0.5,
-                            unit_of_measurement="ct/kWh",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
                     ),
 
-                vol.Optional(CONF_AUTO_CHARGE_POWER, default=get_val(CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)):
+                vol.Optional(CONF_AUTO_CHARGE_POWER, default=self._get_val(CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)):
                     selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=500.0, max=10000.0, step=100.0,
-                            unit_of_measurement="W",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
+                        selector.NumberSelectorConfig(min=500.0, max=10000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
                     ),
             })
         )
+
+    async def async_step_advanced(self, user_input=None):
+        """Erweiterte Einstellungen (Schwellwerte, etc.)."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_init()
+
+        return self.async_show_form(
+            step_id="advanced",
+            data_schema=vol.Schema({
+                # PV-Anlage
+                vol.Optional(CONF_PV_PEAK_POWER, default=self._get_val(CONF_PV_PEAK_POWER, DEFAULT_PV_PEAK_POWER)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=1000.0, max=100000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
+                    ),
+
+                vol.Optional(CONF_WINTER_BASE_LOAD, default=self._get_val(CONF_WINTER_BASE_LOAD, DEFAULT_WINTER_BASE_LOAD)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=10000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
+                    ),
+
+                # Batterie-Schwellwerte für Empfehlungs-Ampel
+                vol.Optional(CONF_BATTERY_SOC_HIGH, default=self._get_val(CONF_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_HIGH)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_BATTERY_SOC["min"], max=RANGE_BATTERY_SOC["max"], step=RANGE_BATTERY_SOC["step"],
+                            unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+
+                vol.Optional(CONF_BATTERY_SOC_LOW, default=self._get_val(CONF_BATTERY_SOC_LOW, DEFAULT_BATTERY_SOC_LOW)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_BATTERY_SOC["min"], max=RANGE_BATTERY_SOC["max"], step=RANGE_BATTERY_SOC["step"],
+                            unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+
+                # Preis-Schwellwerte für Empfehlungs-Ampel
+                vol.Optional(CONF_PRICE_LOW_THRESHOLD, default=self._get_val(CONF_PRICE_LOW_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.01, unit_of_measurement="€/kWh", mode=selector.NumberSelectorMode.BOX)
+                    ),
+
+                vol.Optional(CONF_PRICE_HIGH_THRESHOLD, default=self._get_val(CONF_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_HIGH_THRESHOLD)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.01, unit_of_measurement="€/kWh", mode=selector.NumberSelectorMode.BOX)
+                    ),
+            })
+        )
+
+    async def async_step_save(self, user_input=None):
+        """Speichert alle Änderungen."""
+        # Alle bestehenden Optionen und Daten zusammenführen
+        final_data = {}
+        final_data.update(self.config_entry.options)
+        final_data.update(self._data)
+        return self.async_create_entry(title="", data=final_data)
