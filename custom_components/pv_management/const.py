@@ -99,6 +99,18 @@ DEFAULT_AUTO_CHARGE_TARGET_SOC: Final[float] = 80.0  # % - Ziel-SOC beim Laden
 DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF: Final[float] = 15.0  # ct/kWh - min. Differenz (Ladeverlust + Batterie/WR-Verschleiß)
 DEFAULT_AUTO_CHARGE_POWER: Final[float] = 3000.0  # W - Ladeleistung beim Auto-Charge
 
+# --- Discharge Control (Entlade-Steuerung) ------------------------------------
+CONF_DISCHARGE_ENABLED: Final[str] = "discharge_enabled"
+CONF_DISCHARGE_PRICE_QUANTILE: Final[str] = "discharge_price_quantile"
+CONF_DISCHARGE_HOLD_SOC: Final[str] = "discharge_hold_soc"
+CONF_DISCHARGE_ALLOW_SOC: Final[str] = "discharge_allow_soc"
+
+# Discharge Defaults
+DEFAULT_DISCHARGE_ENABLED: Final[bool] = False
+DEFAULT_DISCHARGE_PRICE_QUANTILE: Final[float] = 0.7  # 0-1, über diesem Wert ist "teuer" → entladen
+DEFAULT_DISCHARGE_HOLD_SOC: Final[float] = 80.0  # % - Batterie halten über diesem Wert
+DEFAULT_DISCHARGE_ALLOW_SOC: Final[float] = 20.0  # % - Batterie kann bis hierhin entladen werden
+
 # --- Ranges für Config Flow / Options -----------------------------------------
 RANGE_PRICE_EUR: Final[dict] = {"min": 0.01, "max": 1.0, "step": 0.001}
 RANGE_PRICE_CENT: Final[dict] = {"min": 1.0, "max": 100.0, "step": 0.01}

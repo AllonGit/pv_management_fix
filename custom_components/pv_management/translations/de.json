@@ -49,6 +49,7 @@
           "prices": "Strompreise & Amortisation",
           "integrations": "Integrationen (EPEX/Solcast)",
           "auto_charge": "Auto-Charge Batterie",
+          "discharge": "Entlade-Steuerung",
           "advanced": "Erweiterte Einstellungen",
           "save": "Speichern & Schliessen"
         }
@@ -133,6 +134,22 @@
           "auto_charge_min_soc": "Nur laden wenn Batterie UNTER diesem Wert ist",
           "auto_charge_target_soc": "Bis wohin geladen werden soll",
           "auto_charge_power": "Mit welcher Leistung geladen werden soll"
+        }
+      },
+      "discharge": {
+        "title": "Entlade-Steuerung",
+        "description": "Steuert wann die Batterie entladen werden darf.\n\nIdee: Batterie fuer teure Stunden aufsparen statt tagsüber zu entladen.\n\nDer Binary Sensor zeigt an wann Entladen erlaubt ist.",
+        "data": {
+          "discharge_enabled": "Entlade-Steuerung aktivieren",
+          "discharge_price_quantile": "Preis-Quantile Schwelle",
+          "discharge_hold_soc": "Halten-SOC",
+          "discharge_allow_soc": "Entladen-SOC"
+        },
+        "data_description": {
+          "discharge_enabled": "Aktiviert die Entlade-Steuerung (Binary Sensor)",
+          "discharge_price_quantile": "0=billigste, 1=teuerste. Bei 0.7 nur entladen wenn Preis in den teuersten 30%",
+          "discharge_hold_soc": "Entladungstiefe wenn NICHT entladen werden soll (Batterie halten)",
+          "discharge_allow_soc": "Entladungstiefe wenn entladen werden darf (bis hierhin entladen)"
         }
       },
       "advanced": {

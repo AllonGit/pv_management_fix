@@ -36,6 +36,7 @@ async def async_setup_entry(
 
     entities = [
         AutoChargeBinarySensor(ctrl, name),
+        DischargeBinarySensor(ctrl, name),
     ]
 
     async_add_entities(entities)
@@ -155,4 +156,88 @@ class AutoChargeBinarySensor(BinarySensorEntity):
 
             # === STATISTIKEN ===
             **self.ctrl.auto_charge_stats,
+        }
+
+
+class DischargeBinarySensor(BinarySensorEntity):
+    """
+    Binary Sensor der anzeigt ob die Batterie jetzt entladen werden sollte.
+
+    Zeigt an ob der Strom teuer genug ist, um die Batterie zu entladen.
+    Wenn ON: Batterie kann bis discharge_allow_soc entladen werden (z.B. 20%)
+    Wenn OFF: Batterie wird auf discharge_hold_soc gehalten (z.B. 80%)
+
+    automation:
+      trigger:
+        - platform: state
+          entity_id: binary_sensor.pv_management_entladung_empfehlung
+      action:
+        - service: number.set_value
+          target:
+            entity_id: number.goodwe_entladungstiefe_netzbetrieb
+          data:
+            value: "{{ 20 if trigger.to_state.state == 'on' else 80 }}"
+    """
+
+    _attr_should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.POWER
+
+    def __init__(self, ctrl, name: str):
+        self.ctrl = ctrl
+        self._attr_name = f"{name} Entladung Empfehlung"
+        uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
+        self._attr_unique_id = f"{DOMAIN}_{uid_name}_discharge_recommendation"
+        self._attr_device_info = get_battery_device_info(name)
+        self._removed = False
+
+    async def async_added_to_hass(self):
+        self._removed = False
+        self.ctrl.register_entity_listener(self._on_ctrl_update)
+
+    async def async_will_remove_from_hass(self):
+        self._removed = True
+        self.ctrl.unregister_entity_listener(self._on_ctrl_update)
+
+    @callback
+    def _on_ctrl_update(self):
+        if not self._removed and self.hass:
+            self.async_write_ha_state()
+
+    @property
+    def is_on(self) -> bool:
+        """True wenn jetzt entladen werden sollte (teurer Strom)."""
+        return self.ctrl.should_discharge
+
+    @property
+    def icon(self) -> str:
+        """Icon basierend auf Status."""
+        if self.is_on:
+            return "mdi:battery-arrow-down"  # Entladen erlaubt
+        elif not self.ctrl.discharge_enabled:
+            return "mdi:battery-off-outline"
+        else:
+            return "mdi:battery-lock"  # Batterie wird gehalten
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Detaillierte Infos für Debugging und Dashboards."""
+        return {
+            # === STATUS ===
+            "entlade_steuerung_aktiviert": self.ctrl.discharge_enabled,
+            "sollte_entladen": self.ctrl.should_discharge,
+            "grund": self.ctrl.discharge_reason,
+            "ziel_entladungstiefe": self.ctrl.discharge_target_soc,
+
+            # === AKTUELLE WERTE ===
+            "aktueller_preis_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
+            "aktueller_preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
+            "aktueller_batterie_soc": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
+
+            # === SCHWELLWERTE ===
+            "schwelle_preis_quantile": self.ctrl.discharge_price_quantile,
+            "halten_soc": self.ctrl.discharge_hold_soc,
+            "entladen_bis_soc": self.ctrl.discharge_allow_soc,
+
+            # === INTEGRATION STATUS ===
+            "epex_integration": self.ctrl.has_epex_integration,
         }

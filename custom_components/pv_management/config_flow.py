@@ -19,6 +19,8 @@ from .const import (
     CONF_AUTO_CHARGE_WINTER_ONLY, CONF_AUTO_CHARGE_PV_THRESHOLD, CONF_AUTO_CHARGE_PRICE_QUANTILE,
     CONF_AUTO_CHARGE_MIN_SOC, CONF_AUTO_CHARGE_TARGET_SOC, CONF_AUTO_CHARGE_MIN_PRICE_DIFF,
     CONF_AUTO_CHARGE_POWER,
+    CONF_DISCHARGE_ENABLED, CONF_DISCHARGE_PRICE_QUANTILE,
+    CONF_DISCHARGE_HOLD_SOC, CONF_DISCHARGE_ALLOW_SOC,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -28,6 +30,8 @@ from .const import (
     DEFAULT_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE,
     DEFAULT_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF,
     DEFAULT_AUTO_CHARGE_POWER,
+    DEFAULT_DISCHARGE_ENABLED, DEFAULT_DISCHARGE_PRICE_QUANTILE,
+    DEFAULT_DISCHARGE_HOLD_SOC, DEFAULT_DISCHARGE_ALLOW_SOC,
     RANGE_COST, RANGE_OFFSET, RANGE_BATTERY_SOC, RANGE_PV_POWER,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
@@ -145,6 +149,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "prices": "Strompreise",
                 "integrations": "Integrationen (EPEX/Solcast)",
                 "auto_charge": "Auto-Charge Batterie",
+                "discharge": "Entlade-Steuerung",
                 "advanced": "Erweiterte Einstellungen",
                 "save": "Speichern & Schließen",
             },
@@ -302,6 +307,38 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_AUTO_CHARGE_POWER, default=self._get_val(CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=500.0, max=10000.0, step=100.0, unit_of_measurement="W", mode=selector.NumberSelectorMode.BOX)
+                    ),
+            })
+        )
+
+    async def async_step_discharge(self, user_input=None):
+        """Entlade-Steuerung Einstellungen."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="discharge",
+            data_schema=vol.Schema({
+                # Aktivierung
+                vol.Optional(CONF_DISCHARGE_ENABLED, default=self._get_val(CONF_DISCHARGE_ENABLED, DEFAULT_DISCHARGE_ENABLED)):
+                    selector.BooleanSelector(),
+
+                # Preis-Quantile ab dem entladen wird (0.7 = teuerste 30% der Stunden)
+                vol.Optional(CONF_DISCHARGE_PRICE_QUANTILE, default=self._get_val(CONF_DISCHARGE_PRICE_QUANTILE, DEFAULT_DISCHARGE_PRICE_QUANTILE)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+                    ),
+
+                # SOC auf dem gehalten wird wenn NICHT entladen (z.B. 80%)
+                vol.Optional(CONF_DISCHARGE_HOLD_SOC, default=self._get_val(CONF_DISCHARGE_HOLD_SOC, DEFAULT_DISCHARGE_HOLD_SOC)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
+                    ),
+
+                # SOC bis zu dem entladen werden darf wenn freigegeben (z.B. 20%)
+                vol.Optional(CONF_DISCHARGE_ALLOW_SOC, default=self._get_val(CONF_DISCHARGE_ALLOW_SOC, DEFAULT_DISCHARGE_ALLOW_SOC)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=0.0, max=100.0, step=5.0, unit_of_measurement="%", mode=selector.NumberSelectorMode.SLIDER)
                     ),
             })
         )

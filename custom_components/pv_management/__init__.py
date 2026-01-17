@@ -25,6 +25,8 @@ from .const import (
     CONF_AUTO_CHARGE_ENABLED, CONF_AUTO_CHARGE_WINTER_ONLY, CONF_AUTO_CHARGE_PV_THRESHOLD,
     CONF_AUTO_CHARGE_PRICE_QUANTILE, CONF_AUTO_CHARGE_MIN_SOC, CONF_AUTO_CHARGE_TARGET_SOC,
     CONF_AUTO_CHARGE_MIN_PRICE_DIFF, CONF_AUTO_CHARGE_POWER,
+    CONF_DISCHARGE_ENABLED, CONF_DISCHARGE_PRICE_QUANTILE,
+    CONF_DISCHARGE_HOLD_SOC, CONF_DISCHARGE_ALLOW_SOC,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -34,6 +36,8 @@ from .const import (
     DEFAULT_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_PV_THRESHOLD,
     DEFAULT_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC,
     DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_POWER,
+    DEFAULT_DISCHARGE_ENABLED, DEFAULT_DISCHARGE_PRICE_QUANTILE,
+    DEFAULT_DISCHARGE_HOLD_SOC, DEFAULT_DISCHARGE_ALLOW_SOC,
     PRICE_UNIT_CENT,
     RECOMMENDATION_DARK_GREEN, RECOMMENDATION_GREEN, RECOMMENDATION_YELLOW, RECOMMENDATION_ORANGE, RECOMMENDATION_RED,
 )
@@ -183,6 +187,12 @@ class PVManagementController:
         self.auto_charge_target_soc = opts.get(CONF_AUTO_CHARGE_TARGET_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC)
         self.auto_charge_min_price_diff = opts.get(CONF_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF)
         self.auto_charge_power = opts.get(CONF_AUTO_CHARGE_POWER, DEFAULT_AUTO_CHARGE_POWER)
+
+        # Discharge Control Einstellungen (Entlade-Steuerung)
+        self.discharge_enabled = opts.get(CONF_DISCHARGE_ENABLED, DEFAULT_DISCHARGE_ENABLED)
+        self.discharge_price_quantile = opts.get(CONF_DISCHARGE_PRICE_QUANTILE, DEFAULT_DISCHARGE_PRICE_QUANTILE)
+        self.discharge_hold_soc = opts.get(CONF_DISCHARGE_HOLD_SOC, DEFAULT_DISCHARGE_HOLD_SOC)
+        self.discharge_allow_soc = opts.get(CONF_DISCHARGE_ALLOW_SOC, DEFAULT_DISCHARGE_ALLOW_SOC)
 
     @property
     def is_winter(self) -> bool:
@@ -444,6 +454,61 @@ class PVManagementController:
 
         # Preisdifferenz in ct/kWh
         return price_diff >= self.auto_charge_min_price_diff
+
+    # =========================================================================
+    # DISCHARGE CONTROL (Entlade-Steuerung für teure Stunden)
+    # =========================================================================
+
+    @property
+    def should_discharge(self) -> bool:
+        """
+        Prüft ob die Batterie jetzt entladen werden sollte (teure Stunden).
+
+        Bedingungen:
+        1. Discharge Control ist aktiviert
+        2. EPEX Quantile ist über dem Schwellwert (teurer Strom)
+        3. Batterie hat genug Ladung
+
+        Wenn True: Entladungstiefe auf discharge_allow_soc setzen (Batterie kann entladen)
+        Wenn False: Entladungstiefe auf discharge_hold_soc setzen (Batterie wird gehalten)
+        """
+        if not self.discharge_enabled:
+            return False
+
+        if not self.has_epex_integration:
+            # Ohne EPEX: Prüfe absoluten Preis
+            return self.current_electricity_price >= self.price_high_threshold
+
+        # Mit EPEX: Prüfe Quantile (über Schwellwert = teuer = entladen erlaubt)
+        return self._epex_quantile >= self.discharge_price_quantile
+
+    @property
+    def discharge_reason(self) -> str:
+        """Gibt den Grund für die Entlade-Empfehlung zurück."""
+        if not self.discharge_enabled:
+            return "Entlade-Steuerung deaktiviert"
+
+        if not self.has_epex_integration:
+            price_ct = self.current_electricity_price * 100
+            threshold_ct = self.price_high_threshold * 100
+            if self.current_electricity_price >= self.price_high_threshold:
+                return f"Preis teuer ({price_ct:.1f} ct >= {threshold_ct:.1f} ct) → Entladen"
+            else:
+                return f"Preis günstig ({price_ct:.1f} ct < {threshold_ct:.1f} ct) → Halten"
+
+        # Mit EPEX
+        if self._epex_quantile >= self.discharge_price_quantile:
+            return f"Preis teuer (Quantile {self._epex_quantile:.2f} >= {self.discharge_price_quantile}) → Entladen"
+        else:
+            return f"Preis günstig (Quantile {self._epex_quantile:.2f} < {self.discharge_price_quantile}) → Halten"
+
+    @property
+    def discharge_target_soc(self) -> float:
+        """Gibt den Ziel-SOC basierend auf Entlade-Empfehlung zurück."""
+        if self.should_discharge:
+            return self.discharge_allow_soc  # z.B. 20% - Batterie kann entladen werden
+        else:
+            return self.discharge_hold_soc  # z.B. 80% - Batterie wird gehalten
 
     @property
     def epex_price_diff_today(self) -> float | None:
