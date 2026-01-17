@@ -49,7 +49,8 @@
           "prices": "Strompreise & Amortisation",
           "integrations": "Integrationen (EPEX/Solcast)",
           "auto_charge": "Auto-Charge Batterie",
-          "advanced": "Erweiterte Einstellungen"
+          "advanced": "Erweiterte Einstellungen",
+          "save": "Speichern & Schliessen"
         }
       },
       "sensors": {

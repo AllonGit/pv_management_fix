@@ -146,14 +146,24 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
                 "integrations": "Integrationen (EPEX/Solcast)",
                 "auto_charge": "Auto-Charge Batterie",
                 "advanced": "Erweiterte Einstellungen",
+                "save": "Speichern & Schließen",
             },
         )
+
+    async def _save_and_return_to_menu(self, user_input):
+        """Speichert die Options und zeigt das Menü wieder an."""
+        self._data.update(user_input)
+        # Sofort speichern
+        final_data = {}
+        final_data.update(self.config_entry.options)
+        final_data.update(self._data)
+        self.hass.config_entries.async_update_entry(self.config_entry, options=final_data)
+        return await self.async_step_init()
 
     async def async_step_sensors(self, user_input=None):
         """Energie-Sensoren konfigurieren."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_init()
+            return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
             step_id="sensors",
@@ -178,8 +188,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_prices(self, user_input=None):
         """Strompreise konfigurieren."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_init()
+            return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
             step_id="prices",
@@ -236,8 +245,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_integrations(self, user_input=None):
         """EPEX Spot und Solcast Integrationen."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_init()
+            return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
             step_id="integrations",
@@ -257,8 +265,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_auto_charge(self, user_input=None):
         """Auto-Charge Batterie Einstellungen."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_init()
+            return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
             step_id="auto_charge",
@@ -302,8 +309,7 @@ class PVManagementOptionsFlow(config_entries.OptionsFlow):
     async def async_step_advanced(self, user_input=None):
         """Erweiterte Einstellungen (Schwellwerte, etc.)."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_init()
+            return await self._save_and_return_to_menu(user_input)
 
         return self.async_show_form(
             step_id="advanced",
