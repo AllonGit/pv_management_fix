@@ -16,6 +16,17 @@ from .const import DOMAIN, DATA_CTRL, CONF_NAME
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_battery_device_info(name: str) -> DeviceInfo:
+    """DeviceInfo für das Batterie-Gerät."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{name}_battery")},
+        name=f"{name} Batterie",
+        manufacturer="Custom",
+        model="PV Management - Batterie",
+        via_device=(DOMAIN, name),
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -53,12 +64,7 @@ class AutoChargeBinarySensor(BinarySensorEntity):
         self._attr_name = f"{name} Auto-Charge Empfehlung"
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_auto_charge_recommendation"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, name)},
-            name=name,
-            manufacturer="Custom",
-            model="PV Management",
-        )
+        self._attr_device_info = get_battery_device_info(name)
         self._removed = False
 
     async def async_added_to_hass(self):

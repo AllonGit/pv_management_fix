@@ -16,6 +16,17 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_battery_device_info(name: str) -> DeviceInfo:
+    """DeviceInfo für das Batterie-Gerät."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{name}_battery")},
+        name=f"{name} Batterie",
+        manufacturer="Custom",
+        model="PV Management - Batterie",
+        via_device=(DOMAIN, name),
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -46,12 +57,7 @@ class AutoChargeSwitch(SwitchEntity, RestoreEntity):
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_auto_charge_switch"
         self._attr_icon = "mdi:battery-charging"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, name)},
-            name=name,
-            manufacturer="Custom",
-            model="PV Management",
-        )
+        self._attr_device_info = get_battery_device_info(name)
         self._is_on = False
         self._removed = False
 

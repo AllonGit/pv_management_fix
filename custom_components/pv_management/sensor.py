@@ -25,6 +25,38 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Geräte-Typen für bessere Übersicht
+DEVICE_MAIN = "main"        # PV Management (Haupt)
+DEVICE_BATTERY = "battery"  # PV Batterie
+DEVICE_PRICES = "prices"    # PV Strompreise
+
+
+def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
+    """Erstellt DeviceInfo für verschiedene Geräte-Typen."""
+    if device_type == DEVICE_BATTERY:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_battery")},
+            name=f"{name} Batterie",
+            manufacturer="Custom",
+            model="PV Management - Batterie",
+            via_device=(DOMAIN, name),
+        )
+    elif device_type == DEVICE_PRICES:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_prices")},
+            name=f"{name} Strompreise",
+            manufacturer="Custom",
+            model="PV Management - Strompreise",
+            via_device=(DOMAIN, name),
+        )
+    else:  # DEVICE_MAIN
+        return DeviceInfo(
+            identifiers={(DOMAIN, name)},
+            name=name,
+            manufacturer="Custom",
+            model="PV Management",
+        )
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -100,8 +132,10 @@ class BaseEntity(SensorEntity):
         state_class=None,
         device_class=None,
         entity_category=None,
+        device_type: str = DEVICE_MAIN,
     ):
         self.ctrl = ctrl
+        self._base_name = name
         self._attr_name = f"{name} {key}"
         uid_name = "".join(c if c.isalnum() else "_" for c in name).lower()
         self._attr_unique_id = f"{DOMAIN}_{uid_name}_{key.lower().replace(' ', '_')}"
@@ -110,12 +144,7 @@ class BaseEntity(SensorEntity):
         self._attr_state_class = state_class
         self._attr_device_class = device_class
         self._attr_entity_category = entity_category
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, name)},
-            name=name,
-            manufacturer="Custom",
-            model="PV Management",
-        )
+        self._attr_device_info = get_device_info(name, device_type)
         self._removed = False
 
     async def async_added_to_hass(self):
@@ -1276,6 +1305,7 @@ class NextCheapHourSensor(BaseEntity):
             name,
             "Nächste günstige Stunde",
             icon="mdi:clock-check",
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -1341,6 +1371,7 @@ class DailyAverageElectricityPriceSensor(BaseEntity):
             unit="ct/kWh",
             icon="mdi:calendar-today",
             state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -1374,6 +1405,7 @@ class MonthlyAverageElectricityPriceSensor(BaseEntity):
             unit="ct/kWh",
             icon="mdi:calendar-month",
             state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -1408,6 +1440,7 @@ class AverageElectricityPriceSensor(BaseEntity):
             unit="ct/kWh",
             icon="mdi:chart-line",
             state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -1440,6 +1473,7 @@ class TotalGridImportCostSensor(BaseEntity):
             icon="mdi:cash-minus",
             state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
+            device_type=DEVICE_PRICES,
         )
 
     @property
@@ -1474,6 +1508,7 @@ class AutoChargeDiagnosticSensor(BaseEntity):
             "Auto-Charge Diagnose",
             icon="mdi:battery-charging-wireless",
             entity_category=EntityCategory.DIAGNOSTIC,
+            device_type=DEVICE_BATTERY,
         )
 
     @property
