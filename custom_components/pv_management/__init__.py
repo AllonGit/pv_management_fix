@@ -429,8 +429,9 @@ class PVManagementController:
     def _check_soc_condition(self) -> bool:
         """Prüft ob Batterie unter Minimum ist."""
         if not self.battery_soc_entity:
-            # Ohne Batterie-Sensor: immer True (keine Prüfung möglich)
-            return True
+            # Ohne Batterie-Sensor: Auto-Charge nicht möglich (Sicherheit!)
+            _LOGGER.debug("Auto-Charge: Kein Batterie-Sensor konfiguriert, SOC-Prüfung nicht möglich")
+            return False
 
         return self._battery_soc < self.auto_charge_min_soc
 
@@ -526,6 +527,8 @@ class PVManagementController:
                 reasons.append(f"Batterie niedrig ({self._battery_soc:.0f}% < {self.auto_charge_min_soc}%)")
             else:
                 blocks.append(f"Batterie ausreichend ({self._battery_soc:.0f}%)")
+        else:
+            blocks.append("Kein Batterie-Sensor konfiguriert")
 
         # Preisdifferenz
         price_diff = self.epex_price_diff_today
