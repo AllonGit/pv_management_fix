@@ -469,12 +469,29 @@ class PVManagementController:
                         entry_dt = entry_time
 
                     if entry_dt.date() == today:
-                        price = entry.get("price_eur_per_mwh") or entry.get("price")
-                        if price is not None:
-                            # Konvertiere zu ct/kWh falls nötig
-                            if price > 10:  # Wahrscheinlich EUR/MWh
-                                price = price / 10  # → ct/kWh
-                            today_prices.append(price)
+                        # Versuche verschiedene Preisattribute
+                        price_mwh = entry.get("price_eur_per_mwh")
+                        price_kwh = entry.get("price_per_kwh")
+                        price_generic = entry.get("price")
+
+                        price_ct = None
+                        if price_mwh is not None:
+                            # EUR/MWh → ct/kWh (÷10)
+                            price_ct = price_mwh / 10
+                        elif price_kwh is not None:
+                            # EUR/kWh → ct/kWh (×100)
+                            price_ct = price_kwh * 100
+                        elif price_generic is not None:
+                            # Heuristik: >10 = wahrscheinlich EUR/MWh, <1 = EUR/kWh, sonst ct/kWh
+                            if price_generic > 10:
+                                price_ct = price_generic / 10
+                            elif price_generic < 1:
+                                price_ct = price_generic * 100
+                            else:
+                                price_ct = price_generic
+
+                        if price_ct is not None:
+                            today_prices.append(price_ct)
 
             if len(today_prices) < 2:
                 return None
