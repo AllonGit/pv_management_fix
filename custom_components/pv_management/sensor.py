@@ -73,6 +73,8 @@ async def async_setup_entry(
         ConfigurationDiagnosticSensor(ctrl, name, entry),
 
         # === STROMPREIS-DURCHSCHNITT ===
+        DailyAverageElectricityPriceSensor(ctrl, name),
+        MonthlyAverageElectricityPriceSensor(ctrl, name),
         AverageElectricityPriceSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
     ]
@@ -1321,11 +1323,77 @@ class NextCheapHourSensor(BaseEntity):
 # =============================================================================
 
 
+class DailyAverageElectricityPriceSensor(BaseEntity):
+    """
+    Täglicher gewichteter Durchschnittsstrompreis in ct/kWh.
+
+    Wird jeden Tag um Mitternacht zurückgesetzt.
+    """
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Strompreis Heute",
+            unit="ct/kWh",
+            icon="mdi:calendar-today",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        avg = self.ctrl.daily_average_price_ct
+        if avg is None:
+            return None
+        return round(avg, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "verbrauch_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
+            "kosten_eur": round(self.ctrl.daily_grid_import_cost, 2),
+            "beschreibung": "Gewichteter Durchschnitt für heute",
+        }
+
+
+class MonthlyAverageElectricityPriceSensor(BaseEntity):
+    """
+    Monatlicher gewichteter Durchschnittsstrompreis in ct/kWh.
+
+    Wird am Monatsersten zurückgesetzt.
+    """
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Strompreis Monat",
+            unit="ct/kWh",
+            icon="mdi:calendar-month",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        avg = self.ctrl.monthly_average_price_ct
+        if avg is None:
+            return None
+        return round(avg, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "verbrauch_kwh": round(self.ctrl.monthly_grid_import_kwh, 2),
+            "kosten_eur": round(self.ctrl.monthly_grid_import_cost, 2),
+            "beschreibung": "Gewichteter Durchschnitt für diesen Monat",
+        }
+
+
 class AverageElectricityPriceSensor(BaseEntity):
     """
-    Durchschnittlicher Strompreis (gewichtet nach Verbrauch).
+    Gesamter gewichteter Durchschnittsstrompreis in ct/kWh.
 
-    Zeigt den tatsächlich bezahlten Durchschnittspreis für Netzbezug.
+    Zeigt den tatsächlich bezahlten Durchschnittspreis seit Tracking-Beginn.
     Ideal zum Vergleich mit Fixpreis-Tarifen.
     """
 
@@ -1333,7 +1401,7 @@ class AverageElectricityPriceSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Durchschnittlicher Strompreis",
+            "Strompreis Gesamt",
             unit="ct/kWh",
             icon="mdi:chart-line",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1350,10 +1418,10 @@ class AverageElectricityPriceSensor(BaseEntity):
     def extra_state_attributes(self) -> dict:
         avg_eur = self.ctrl.average_electricity_price
         return {
-            "tracked_import_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
-            "total_import_cost_eur": round(self.ctrl.total_grid_import_cost, 2),
+            "verbrauch_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
+            "kosten_eur": round(self.ctrl.total_grid_import_cost, 2),
             "average_eur_per_kwh": f"{avg_eur:.4f}" if avg_eur else None,
-            "calculation": "Gesamtkosten / Gesamtverbrauch (gewichtet)",
+            "beschreibung": "Gewichteter Durchschnitt seit Tracking-Beginn",
         }
 
 
@@ -1379,6 +1447,6 @@ class TotalGridImportCostSensor(BaseEntity):
     def extra_state_attributes(self) -> dict:
         avg = self.ctrl.average_electricity_price_ct
         return {
-            "tracked_import_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
+            "verbrauch_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
             "durchschnittspreis_ct": f"{avg:.2f}" if avg else None,
         }

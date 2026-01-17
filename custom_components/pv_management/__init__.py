@@ -104,6 +104,16 @@ class PVManagementController:
         self._total_grid_import_cost = 0.0  # Gesamtkosten Netzbezug in €
         self._tracked_grid_import_kwh = 0.0  # Netzbezug für Durchschnittsberechnung
 
+        # Tägliches Strompreis-Tracking
+        self._daily_grid_import_cost = 0.0
+        self._daily_grid_import_kwh = 0.0
+        self._daily_tracking_date: date | None = None
+
+        # Monatliches Strompreis-Tracking
+        self._monthly_grid_import_cost = 0.0
+        self._monthly_grid_import_kwh = 0.0
+        self._monthly_tracking_month: int | None = None  # 1-12
+
         # Auto-Charge Statistiken
         self._auto_charge_count = 0  # Anzahl Aktivierungen
         self._auto_charge_total_hours = 0.0  # Gesamte Ladezeit in Stunden
@@ -844,6 +854,40 @@ class PVManagementController:
         if avg is None:
             return None
         return avg * 100
+
+    @property
+    def daily_average_price_ct(self) -> float | None:
+        """Täglicher gewichteter Durchschnittspreis in ct/kWh."""
+        if self._daily_grid_import_kwh <= 0:
+            return None
+        return (self._daily_grid_import_cost / self._daily_grid_import_kwh) * 100
+
+    @property
+    def monthly_average_price_ct(self) -> float | None:
+        """Monatlicher gewichteter Durchschnittspreis in ct/kWh."""
+        if self._monthly_grid_import_kwh <= 0:
+            return None
+        return (self._monthly_grid_import_cost / self._monthly_grid_import_kwh) * 100
+
+    @property
+    def daily_grid_import_kwh(self) -> float:
+        """Täglicher Netzbezug in kWh."""
+        return self._daily_grid_import_kwh
+
+    @property
+    def daily_grid_import_cost(self) -> float:
+        """Tägliche Netzbezugskosten in €."""
+        return self._daily_grid_import_cost
+
+    @property
+    def monthly_grid_import_kwh(self) -> float:
+        """Monatlicher Netzbezug in kWh."""
+        return self._monthly_grid_import_kwh
+
+    @property
+    def monthly_grid_import_cost(self) -> float:
+        """Monatliche Netzbezugskosten in €."""
+        return self._monthly_grid_import_cost
 
     @property
     def spot_vs_fixed_savings(self) -> float | None:
@@ -1646,8 +1690,29 @@ class PVManagementController:
         if delta_import > 0:
             price_electricity = self.current_electricity_price
             import_cost = delta_import * price_electricity
+
+            # Gesamt-Tracking
             self._tracked_grid_import_kwh += delta_import
             self._total_grid_import_cost += import_cost
+
+            # Tägliches Tracking (Reset bei Tageswechsel)
+            today = date.today()
+            if self._daily_tracking_date != today:
+                self._daily_grid_import_cost = 0.0
+                self._daily_grid_import_kwh = 0.0
+                self._daily_tracking_date = today
+            self._daily_grid_import_kwh += delta_import
+            self._daily_grid_import_cost += import_cost
+
+            # Monatliches Tracking (Reset bei Monatswechsel)
+            current_month = today.month
+            if self._monthly_tracking_month != current_month:
+                self._monthly_grid_import_cost = 0.0
+                self._monthly_grid_import_kwh = 0.0
+                self._monthly_tracking_month = current_month
+            self._monthly_grid_import_kwh += delta_import
+            self._monthly_grid_import_cost += import_cost
+
             _LOGGER.debug(
                 "Import Delta: +%.3f kWh × %.4f€/kWh = %.4f€ (Durchschnitt: %.2f ct/kWh)",
                 delta_import, price_electricity, import_cost,
