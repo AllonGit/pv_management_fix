@@ -61,6 +61,7 @@ CONF_WINTER_BASE_LOAD: Final[str] = "winter_base_load"
 
 # --- Auto-Charge (Batterie automatisch laden) ---------------------------------
 CONF_AUTO_CHARGE_ENABLED: Final[str] = "auto_charge_enabled"
+CONF_AUTO_CHARGE_WINTER_ONLY: Final[str] = "auto_charge_winter_only"
 CONF_AUTO_CHARGE_PV_THRESHOLD: Final[str] = "auto_charge_pv_threshold"
 CONF_AUTO_CHARGE_PRICE_QUANTILE: Final[str] = "auto_charge_price_quantile"
 CONF_AUTO_CHARGE_MIN_SOC: Final[str] = "auto_charge_min_soc"
@@ -90,6 +91,7 @@ DEFAULT_WINTER_BASE_LOAD: Final[float] = 0.0  # W - Grundlast Winter (z.B. Wärm
 
 # Auto-Charge Defaults
 DEFAULT_AUTO_CHARGE_ENABLED: Final[bool] = False
+DEFAULT_AUTO_CHARGE_WINTER_ONLY: Final[bool] = True  # Nur im Winter laden (Okt-März)
 DEFAULT_AUTO_CHARGE_PV_THRESHOLD: Final[float] = 5.0  # kWh - unter dieser Prognose wird geladen
 DEFAULT_AUTO_CHARGE_PRICE_QUANTILE: Final[float] = 0.3  # 0-1, unter diesem Wert ist "günstig"
 DEFAULT_AUTO_CHARGE_MIN_SOC: Final[float] = 30.0  # % - nur laden wenn SOC unter diesem Wert

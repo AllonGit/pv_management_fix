@@ -83,7 +83,19 @@
           "installation_date": "Installationsdatum",
           "savings_offset": "Ersparnis-Offset",
           "energy_offset_self_consumption": "Eigenverbrauch-Offset (kWh)",
-          "energy_offset_export": "Einspeisung-Offset (kWh)"
+          "energy_offset_export": "Einspeisung-Offset (kWh)",
+          "pv_peak_power": "PV Peak Power (W)",
+          "winter_base_load": "Winter Base Load (W)",
+          "epex_price_entity": "EPEX Spot Price Sensor",
+          "epex_quantile_entity": "EPEX Quantile Sensor",
+          "solcast_forecast_entity": "Solcast Forecast Sensor",
+          "auto_charge_winter_only": "Auto-Charge: Winter Only",
+          "auto_charge_pv_threshold": "Auto-Charge: PV Forecast Threshold",
+          "auto_charge_price_quantile": "Auto-Charge: Price Quantile Threshold",
+          "auto_charge_min_soc": "Auto-Charge: Min Battery SOC",
+          "auto_charge_target_soc": "Auto-Charge: Target Battery SOC",
+          "auto_charge_min_price_diff": "Auto-Charge: Min Price Difference",
+          "auto_charge_power": "Auto-Charge: Charge Power"
         },
         "data_description": {
           "pv_production_entity": "Sensor fuer PV-Produktion in kWh",
@@ -108,7 +120,19 @@
           "installation_date": "Fuer Statistiken und Prognosen",
           "savings_offset": "ACHTUNG: Entweder Euro-Offset ODER kWh-Offsets verwenden, nicht beides!",
           "energy_offset_self_consumption": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktuellem Preis multipliziert",
-          "energy_offset_export": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktueller Verguetung multipliziert"
+          "energy_offset_export": "Nur ausfuellen wenn Euro-Offset = 0! Wird mit aktueller Verguetung multipliziert",
+          "pv_peak_power": "Peak power of your PV system in Watt (e.g. 10000 for 10kWp)",
+          "winter_base_load": "Winter base load subtracted from PV (e.g. heat pump)",
+          "epex_price_entity": "EPEX Spot electricity price sensor",
+          "epex_quantile_entity": "EPEX Quantile sensor (0=cheapest, 1=most expensive price of the day)",
+          "solcast_forecast_entity": "Solcast PV forecast sensor for today",
+          "auto_charge_winter_only": "If enabled, Auto-Charge only active in winter (October to March)",
+          "auto_charge_pv_threshold": "Below this PV forecast, charging is recommended",
+          "auto_charge_price_quantile": "Below this quantile value, price is cheap enough to charge",
+          "auto_charge_min_soc": "Only charge if battery is below this SOC",
+          "auto_charge_target_soc": "Target SOC when auto-charging",
+          "auto_charge_min_price_diff": "Only charge if difference between cheapest and most expensive price is at least this",
+          "auto_charge_power": "Charge power for auto-charge"
         }
       }
     }

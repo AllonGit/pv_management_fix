@@ -22,7 +22,7 @@ from .const import (
     CONF_PRICE_HIGH_THRESHOLD, CONF_PRICE_LOW_THRESHOLD, CONF_PV_POWER_HIGH,
     CONF_PV_PEAK_POWER, CONF_WINTER_BASE_LOAD,
     CONF_EPEX_PRICE_ENTITY, CONF_EPEX_QUANTILE_ENTITY, CONF_SOLCAST_FORECAST_ENTITY,
-    CONF_AUTO_CHARGE_ENABLED, CONF_AUTO_CHARGE_PV_THRESHOLD,
+    CONF_AUTO_CHARGE_ENABLED, CONF_AUTO_CHARGE_WINTER_ONLY, CONF_AUTO_CHARGE_PV_THRESHOLD,
     CONF_AUTO_CHARGE_PRICE_QUANTILE, CONF_AUTO_CHARGE_MIN_SOC, CONF_AUTO_CHARGE_TARGET_SOC,
     CONF_AUTO_CHARGE_MIN_PRICE_DIFF, CONF_AUTO_CHARGE_POWER,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
@@ -31,7 +31,7 @@ from .const import (
     DEFAULT_BATTERY_SOC_HIGH, DEFAULT_BATTERY_SOC_LOW,
     DEFAULT_PRICE_HIGH_THRESHOLD, DEFAULT_PRICE_LOW_THRESHOLD, DEFAULT_PV_POWER_HIGH,
     DEFAULT_PV_PEAK_POWER, DEFAULT_WINTER_BASE_LOAD,
-    DEFAULT_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_PV_THRESHOLD,
+    DEFAULT_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_PV_THRESHOLD,
     DEFAULT_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_TARGET_SOC,
     DEFAULT_AUTO_CHARGE_MIN_PRICE_DIFF, DEFAULT_AUTO_CHARGE_POWER,
     PRICE_UNIT_CENT,
@@ -176,6 +176,7 @@ class PVManagementController:
 
         # Auto-Charge Einstellungen
         self.auto_charge_enabled = opts.get(CONF_AUTO_CHARGE_ENABLED, DEFAULT_AUTO_CHARGE_ENABLED)
+        self.auto_charge_winter_only = opts.get(CONF_AUTO_CHARGE_WINTER_ONLY, DEFAULT_AUTO_CHARGE_WINTER_ONLY)
         self.auto_charge_pv_threshold = opts.get(CONF_AUTO_CHARGE_PV_THRESHOLD, DEFAULT_AUTO_CHARGE_PV_THRESHOLD)
         self.auto_charge_price_quantile = opts.get(CONF_AUTO_CHARGE_PRICE_QUANTILE, DEFAULT_AUTO_CHARGE_PRICE_QUANTILE)
         self.auto_charge_min_soc = opts.get(CONF_AUTO_CHARGE_MIN_SOC, DEFAULT_AUTO_CHARGE_MIN_SOC)
@@ -390,12 +391,17 @@ class PVManagementController:
 
         Bedingungen:
         1. Auto-Charge ist aktiviert
-        2. PV-Prognose ist unter dem Schwellwert (schlechtes Wetter erwartet)
-        3. Strompreis ist günstig (Quantile unter Schwellwert)
-        4. Batterie-SOC ist unter dem Minimum (noch Platz zum Laden)
-        5. Preisdifferenz zwischen billig/teuer ist groß genug
+        2. Winter-Only: Nur im Winter laden (Okt-März) wenn aktiviert
+        3. PV-Prognose ist unter dem Schwellwert (schlechtes Wetter erwartet)
+        4. Strompreis ist günstig (Quantile unter Schwellwert)
+        5. Batterie-SOC ist unter dem Minimum (noch Platz zum Laden)
+        6. Preisdifferenz zwischen billig/teuer ist groß genug
         """
         if not self.auto_charge_enabled:
+            return False
+
+        # Winter-Only Prüfung
+        if self.auto_charge_winter_only and not self.is_winter:
             return False
 
         # Prüfe alle Bedingungen
@@ -487,6 +493,13 @@ class PVManagementController:
 
         reasons = []
         blocks = []
+
+        # Winter-Only Prüfung
+        if self.auto_charge_winter_only:
+            if self.is_winter:
+                reasons.append("Winter (Okt-März)")
+            else:
+                blocks.append("Kein Winter (nur Okt-März aktiv)")
 
         # PV-Prognose
         forecast = self._solcast_forecast_today if self.has_solcast_integration else self._pv_forecast

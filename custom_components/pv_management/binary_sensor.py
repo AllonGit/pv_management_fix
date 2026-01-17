@@ -95,37 +95,58 @@ class AutoChargeBinarySensor(BinarySensorEntity):
         forecast = self.ctrl.solcast_forecast_today if self.ctrl.has_solcast_integration else self.ctrl.pv_forecast
         price_diff = self.ctrl.epex_price_diff_today
 
+        # Berechne geschätzte Ladekosten und potentielle Ersparnis
+        charge_cost_estimate = None
+        potential_savings = None
+        if self.ctrl.should_auto_charge and price_diff:
+            # Geschätzte Ladekosten für 1 Stunde
+            charge_kwh = self.ctrl.auto_charge_power / 1000
+            charge_cost_estimate = charge_kwh * self.ctrl.current_electricity_price
+            # Potentielle Ersparnis (mit 85% Effizienz)
+            potential_savings = charge_kwh * (price_diff / 100) * 0.85
+
         return {
-            # Status
+            # === STATUS ===
             "auto_charge_aktiviert": self.ctrl.auto_charge_enabled,
             "sollte_laden": self.ctrl.should_auto_charge,
             "grund": self.ctrl.auto_charge_reason,
 
-            # Aktuelle Werte
+            # === WINTER-ONLY ===
+            "nur_winter_aktiv": self.ctrl.auto_charge_winter_only,
+            "ist_winter": self.ctrl.is_winter,
+            "winter_monate": "Oktober bis März",
+
+            # === AKTUELLE WERTE ===
             "aktuelle_pv_prognose_kwh": round(forecast, 1),
             "aktueller_preis_quantile": round(self.ctrl.epex_quantile, 2) if self.ctrl.has_epex_integration else None,
             "aktueller_preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
             "aktueller_batterie_soc": round(self.ctrl.battery_soc, 0) if self.ctrl.battery_soc_entity else None,
             "preisdifferenz_heute_ct": price_diff,
 
-            # Schwellwerte (zum Vergleich)
+            # === SCHWELLWERTE (zum Vergleich) ===
             "schwelle_pv_prognose_kwh": self.ctrl.auto_charge_pv_threshold,
             "schwelle_preis_quantile": self.ctrl.auto_charge_price_quantile,
             "schwelle_min_soc": self.ctrl.auto_charge_min_soc,
             "schwelle_ziel_soc": self.ctrl.auto_charge_target_soc,
             "schwelle_min_preisdifferenz_ct": self.ctrl.auto_charge_min_price_diff,
 
-            # Bedingungen einzeln
+            # === BEDINGUNGEN (✓/✗) ===
+            "bedingung_winter_erfuellt": not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter,
             "bedingung_pv_erfuellt": self.ctrl._check_pv_condition(),
             "bedingung_preis_erfuellt": self.ctrl._check_price_condition(),
             "bedingung_soc_erfuellt": self.ctrl._check_soc_condition(),
             "bedingung_preisdiff_erfuellt": self.ctrl._check_price_diff_condition(),
 
-            # Integration Status
+            # === KOSTENRECHNUNG ===
+            "ladeleistung_w": self.ctrl.auto_charge_power,
+            "geschaetzte_ladekosten_1h_eur": round(charge_cost_estimate, 2) if charge_cost_estimate else None,
+            "potentielle_ersparnis_1h_eur": round(potential_savings, 2) if potential_savings else None,
+
+            # === INTEGRATION STATUS ===
             "epex_integration": self.ctrl.has_epex_integration,
             "solcast_integration": self.ctrl.has_solcast_integration,
             "batterie_sensor_konfiguriert": bool(self.ctrl.battery_soc_entity),
 
-            # Statistiken
+            # === STATISTIKEN ===
             **self.ctrl.auto_charge_stats,
         }
