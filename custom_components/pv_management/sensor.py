@@ -110,7 +110,12 @@ async def async_setup_entry(
         AverageElectricityPriceSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
 
-        # === AUTO-CHARGE DIAGNOSE ===
+        # === AUTO-CHARGE BATTERIE ===
+        AutoChargeReasonSensor(ctrl, name),
+        AutoChargePriceDiffSensor(ctrl, name),
+        AutoChargePVForecastSensor(ctrl, name),
+        AutoChargePriceQuantileSensor(ctrl, name),
+        AutoChargeConditionsSensor(ctrl, name),
         AutoChargeDiagnosticSensor(ctrl, name),
     ]
 
@@ -1490,8 +1495,168 @@ class TotalGridImportCostSensor(BaseEntity):
 
 
 # =============================================================================
-# AUTO-CHARGE DIAGNOSE-SENSOR
+# AUTO-CHARGE BATTERIE-SENSOREN
 # =============================================================================
+
+
+class AutoChargeReasonSensor(BaseEntity):
+    """Zeigt den Grund warum geladen/nicht geladen wird."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Ladegrund",
+            icon="mdi:information-outline",
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> str:
+        return self.ctrl.auto_charge_reason
+
+    @property
+    def icon(self) -> str:
+        if self.ctrl.should_auto_charge:
+            return "mdi:check-circle"
+        return "mdi:close-circle"
+
+
+class AutoChargePriceDiffSensor(BaseEntity):
+    """Preisdifferenz zwischen billigster und teuerster Stunde heute."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Preisdifferenz Heute",
+            unit="ct/kWh",
+            icon="mdi:cash-multiple",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        diff = self.ctrl.epex_price_diff_today
+        if diff is None:
+            return None
+        return round(diff, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "schwelle_ct": self.ctrl.auto_charge_min_price_diff,
+            "bedingung_erfuellt": self.ctrl._check_price_diff_condition(),
+            "beschreibung": f"Min. {self.ctrl.auto_charge_min_price_diff} ct nötig",
+        }
+
+
+class AutoChargePVForecastSensor(BaseEntity):
+    """PV Prognose für heute (für Auto-Charge Entscheidung)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "PV Prognose Heute",
+            unit="kWh",
+            icon="mdi:solar-power",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float:
+        forecast = self.ctrl.solcast_forecast_today if self.ctrl.has_solcast_integration else self.ctrl.pv_forecast
+        return round(forecast, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "schwelle_kwh": self.ctrl.auto_charge_pv_threshold,
+            "bedingung_erfuellt": self.ctrl._check_pv_condition(),
+            "quelle": "Solcast" if self.ctrl.has_solcast_integration else "Manuell",
+            "beschreibung": f"Unter {self.ctrl.auto_charge_pv_threshold} kWh = laden",
+        }
+
+
+class AutoChargePriceQuantileSensor(BaseEntity):
+    """Aktuelles Preis-Quantile (0=billigste, 1=teuerste Stunde)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Preis Quantile",
+            icon="mdi:percent",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        if not self.ctrl.has_epex_integration:
+            return None
+        return round(self.ctrl.epex_quantile, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "schwelle": self.ctrl.auto_charge_price_quantile,
+            "bedingung_erfuellt": self.ctrl._check_price_condition(),
+            "preis_ct": round(self.ctrl.current_electricity_price * 100, 1),
+            "beschreibung": f"0=billigste, 1=teuerste. Unter {self.ctrl.auto_charge_price_quantile} = günstig",
+        }
+
+
+class AutoChargeConditionsSensor(BaseEntity):
+    """Zeigt welche Bedingungen erfüllt sind."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Bedingungen",
+            icon="mdi:checkbox-marked-circle-outline",
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> str:
+        """Zeigt Anzahl erfüllter Bedingungen."""
+        conditions = [
+            not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter,
+            self.ctrl._check_pv_condition(),
+            self.ctrl._check_price_condition(),
+            self.ctrl._check_soc_condition(),
+            self.ctrl._check_price_diff_condition(),
+        ]
+        fulfilled = sum(conditions)
+        return f"{fulfilled}/5 erfüllt"
+
+    @property
+    def icon(self) -> str:
+        if self.ctrl.should_auto_charge:
+            return "mdi:checkbox-marked-circle"
+        return "mdi:checkbox-blank-circle-outline"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        winter_ok = not self.ctrl.auto_charge_winter_only or self.ctrl.is_winter
+        pv_ok = self.ctrl._check_pv_condition()
+        price_ok = self.ctrl._check_price_condition()
+        soc_ok = self.ctrl._check_soc_condition()
+        diff_ok = self.ctrl._check_price_diff_condition()
+
+        return {
+            "winter": "✓ Winter" if winter_ok else "✗ Sommer",
+            "pv_prognose": "✓ Niedrig" if pv_ok else "✗ Hoch",
+            "preis": "✓ Günstig" if price_ok else "✗ Teuer",
+            "batterie_soc": "✓ Niedrig" if soc_ok else "✗ Voll",
+            "preisdifferenz": "✓ Groß" if diff_ok else "✗ Klein",
+            "alle_erfuellt": self.ctrl.should_auto_charge,
+        }
 
 
 class AutoChargeDiagnosticSensor(BaseEntity):
