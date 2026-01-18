@@ -199,7 +199,7 @@ class DischargeSwitch(SwitchEntity, RestoreEntity):
             "sommer_soc_prozent": self.ctrl.discharge_summer_soc,
             "aktueller_preis_quantile": self.ctrl.epex_quantile if self.ctrl.has_epex_integration else None,
             "aktueller_batterie_soc": self.ctrl.battery_soc if self.ctrl.battery_soc_entity else None,
-            "ziel_entladungstiefe": self.ctrl.discharge_target_soc if self._is_on else None,
+            "ziel_entladungstiefe": self.ctrl.discharge_target_soc,  # Gibt None zurück wenn deaktiviert
             "sollte_jetzt_entladen": self.ctrl.should_discharge if self._is_on else False,
             "grund": self.ctrl.discharge_reason if self._is_on else "Entlade-Steuerung deaktiviert",
         }

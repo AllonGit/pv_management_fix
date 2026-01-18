@@ -125,6 +125,7 @@ class PVManagementController:
         self._auto_charge_estimated_savings = 0.0  # Geschätzte Ersparnis in €
         self._auto_charge_last_start = None  # Zeitpunkt des letzten Starts
         self._auto_charge_was_active = False  # War Auto-Charge im letzten Zyklus aktiv?
+        self._is_auto_charging = False  # Hysterese: Läuft gerade ein Ladevorgang?
 
         # Flag ob Werte aus Restore geladen wurden
         self._restored = False
@@ -406,23 +407,39 @@ class PVManagementController:
         2. Winter-Only: Nur im Winter laden (Okt-März) wenn aktiviert
         3. PV-Prognose ist unter dem Schwellwert (schlechtes Wetter erwartet)
         4. Strompreis ist günstig (Quantile unter Schwellwert)
-        5. Batterie-SOC ist unter dem Minimum (noch Platz zum Laden)
+        5. Batterie-SOC ist unter dem Minimum (Start) oder unter Ziel (Weiterladen)
         6. Preisdifferenz zwischen billig/teuer ist groß genug
+
+        Hysterese: Einmal gestartet, wird bis target_soc weitergeladen.
         """
         if not self.auto_charge_enabled:
+            self._is_auto_charging = False
             return False
 
         # Winter-Only Prüfung
         if self.auto_charge_winter_only and not self.is_winter:
+            self._is_auto_charging = False
             return False
 
         # Prüfe alle Bedingungen
         pv_condition = self._check_pv_condition()
         price_condition = self._check_price_condition()
-        soc_condition = self._check_soc_condition()
+        soc_condition = self._check_soc_condition()  # Enthält Hysterese-Logik
         price_diff_condition = self._check_price_diff_condition()
 
-        return pv_condition and price_condition and soc_condition and price_diff_condition
+        result = pv_condition and price_condition and soc_condition and price_diff_condition
+
+        # Wenn alle Bedingungen erfüllt sind und wir noch nicht laden → Starten
+        if result and not self._is_auto_charging:
+            self._is_auto_charging = True
+            _LOGGER.info("Auto-Charge: Ladevorgang gestartet bei SOC %.0f%%", self._battery_soc)
+
+        # Wenn Preis nicht mehr günstig → Stoppen (auch wenn Ziel nicht erreicht)
+        if self._is_auto_charging and not price_condition:
+            self._is_auto_charging = False
+            _LOGGER.info("Auto-Charge: Preis nicht mehr günstig, Laden pausiert")
+
+        return result
 
     def _check_pv_condition(self) -> bool:
         """Prüft ob PV-Prognose unter Schwellwert ist."""
@@ -439,13 +456,37 @@ class PVManagementController:
         return self._epex_quantile <= self.auto_charge_price_quantile
 
     def _check_soc_condition(self) -> bool:
-        """Prüft ob Batterie unter Minimum ist."""
+        """
+        Prüft ob Batterie geladen werden sollte (mit Hysterese).
+
+        - Start: SOC < min_soc (z.B. unter 30%)
+        - Stopp: SOC >= target_soc (z.B. bei 80%)
+
+        Dazwischen: Weiterladen bis Ziel erreicht.
+        """
         if not self.battery_soc_entity:
             # Ohne Batterie-Sensor: Auto-Charge nicht möglich (Sicherheit!)
             _LOGGER.debug("Auto-Charge: Kein Batterie-Sensor konfiguriert, SOC-Prüfung nicht möglich")
             return False
 
-        return self._battery_soc < self.auto_charge_min_soc
+        current_soc = self._battery_soc
+
+        # Wenn wir bereits laden: Weitermachen bis Ziel erreicht
+        if self._is_auto_charging:
+            if current_soc >= self.auto_charge_target_soc:
+                # Ziel erreicht → Laden beenden
+                self._is_auto_charging = False
+                _LOGGER.info("Auto-Charge: Ziel-SOC %.0f%% erreicht, Laden beendet", current_soc)
+                return False
+            else:
+                # Noch nicht am Ziel → Weiterladen
+                return True
+
+        # Noch nicht am Laden: Nur starten wenn unter Minimum
+        if current_soc < self.auto_charge_min_soc:
+            return True
+
+        return False
 
     def _check_price_diff_condition(self) -> bool:
         """Prüft ob die Preisdifferenz groß genug ist um sich zu lohnen."""
@@ -521,11 +562,18 @@ class PVManagementController:
             return f"Preis günstig (Quantile {self._epex_quantile:.2f} < {self.discharge_price_quantile}) → Halten"
 
     @property
-    def discharge_target_soc(self) -> float:
-        """Gibt den Ziel-SOC basierend auf Entlade-Empfehlung zurück."""
+    def discharge_target_soc(self) -> float | None:
+        """
+        Gibt den Ziel-SOC basierend auf Entlade-Empfehlung zurück.
+
+        Wenn Entlade-Steuerung deaktiviert → None (keine Steuerung)
+        """
+        if not self.discharge_enabled:
+            return None  # Keine Steuerung wenn deaktiviert
+
         # Sommer-Modus: Normale Entladung
         if self.discharge_winter_only and not self.is_winter:
-            return self.discharge_summer_soc  # z.B. 1% - normale Entladung im Sommer
+            return self.discharge_summer_soc  # z.B. 10% - normale Entladung im Sommer
 
         if self.should_discharge:
             return self.discharge_allow_soc  # z.B. 20% - Batterie kann entladen werden
@@ -625,12 +673,18 @@ class PVManagementController:
             else:
                 blocks.append(f"Preis zu hoch ({self.current_electricity_price*100:.1f} ct)")
 
-        # Batterie SOC
+        # Batterie SOC (mit Hysterese)
         if self.battery_soc_entity:
-            if self._battery_soc < self.auto_charge_min_soc:
+            if self._is_auto_charging:
+                # Ladevorgang läuft bereits
+                if self._battery_soc < self.auto_charge_target_soc:
+                    reasons.append(f"Ladevorgang aktiv ({self._battery_soc:.0f}% → {self.auto_charge_target_soc}%)")
+                else:
+                    blocks.append(f"Ziel-SOC erreicht ({self._battery_soc:.0f}%)")
+            elif self._battery_soc < self.auto_charge_min_soc:
                 reasons.append(f"Batterie niedrig ({self._battery_soc:.0f}% < {self.auto_charge_min_soc}%)")
             else:
-                blocks.append(f"Batterie ausreichend ({self._battery_soc:.0f}%)")
+                blocks.append(f"Batterie ausreichend ({self._battery_soc:.0f}% ≥ {self.auto_charge_min_soc}%)")
         else:
             blocks.append("Kein Batterie-Sensor konfiguriert")
 

@@ -115,6 +115,7 @@ class AutoChargeBinarySensor(BinarySensorEntity):
         return {
             # === STATUS ===
             "auto_charge_aktiviert": self.ctrl.auto_charge_enabled,
+            "ladevorgang_aktiv": self.ctrl._is_auto_charging,  # Hysterese-Status
             "sollte_laden": self.ctrl.should_auto_charge,
             "grund": self.ctrl.auto_charge_reason,
 
@@ -221,12 +222,13 @@ class DischargeBinarySensor(BinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Detaillierte Infos für Debugging und Dashboards."""
+        target_soc = self.ctrl.discharge_target_soc
         return {
             # === STATUS ===
             "entlade_steuerung_aktiviert": self.ctrl.discharge_enabled,
             "sollte_entladen": self.ctrl.should_discharge,
             "grund": self.ctrl.discharge_reason,
-            "ziel_entladungstiefe": self.ctrl.discharge_target_soc,
+            "ziel_entladungstiefe": target_soc,  # None wenn deaktiviert
 
             # === WINTER/SOMMER ===
             "nur_winter_aktiv": self.ctrl.discharge_winter_only,
