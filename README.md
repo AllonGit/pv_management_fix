@@ -60,6 +60,11 @@ Calculates the amortization of your PV system and optionally compares with spot 
 | Ersparnis pro Tag/Monat/Jahr | Average savings |
 | CO2 Ersparnis | kg CO2 saved |
 | Fixpreis vs Spot | EUR saved vs. spot tariff (optional) |
+| **Strompreis Brutto** | Gross price in EUR/kWh (for Energy Dashboard) |
+
+### Energy Dashboard Integration
+
+Use `sensor.pv_fixpreis_strompreis_brutto` as electricity price entity in the Home Assistant Energy Dashboard. The sensor outputs the calculated gross price in `EUR/kWh` format.
 
 ### Electricity Quota Sensors (v1.1.0)
 
@@ -82,10 +87,13 @@ When enabled, these sensors appear under a separate "Stromkontingent" device:
 - EPEX Spot Price (optional, for comparison)
 
 ### Electricity Prices & Amortization
-- **Fixed price** (ct/kWh) - your tariff
+- **Energy price net** (ct/kWh) - your tariff's energy component
+- **Markup factor** (default: 2.0) - multiplier for grid fees, taxes, VAT
 - **Feed-in tariff** (EUR/kWh or ct/kWh)
 - **Installation cost** (EUR)
 - **Installation date**
+
+> **Example:** Net price 10.92 ct × factor 2.0 = 21.84 ct gross (used for savings)
 
 ### Historical Data
 - Already amortized amount (EUR)
@@ -209,6 +217,12 @@ action:
 ```
 
 ## Changelog
+
+### v1.5.0
+- **NEW: Markup Factor** - Enter net price + factor for automatic gross calculation
+- **NEW: Energy Dashboard Sensor** - `EUR/kWh` sensor for HA Energy Dashboard
+- Improved savings calculations using gross price
+- Better spot vs. fixed comparison
 
 ### v1.4.0
 - **NEW: Helper-Sync** - Required input_number for persistent savings storage
