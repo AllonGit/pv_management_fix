@@ -41,7 +41,8 @@ CONF_ENERGY_OFFSET_EXPORT: Final[str] = "energy_offset_export"
 CONF_INSTALLATION_DATE: Final[str] = "installation_date"
 
 # --- Fixpreis (Haupt-Feature dieser Integration) ------------------------------
-CONF_FIXED_PRICE: Final[str] = "fixed_price"  # Der Fixpreis in ct/kWh
+CONF_FIXED_PRICE: Final[str] = "fixed_price"  # Der Fixpreis in ct/kWh (netto Arbeitspreis)
+CONF_MARKUP_FACTOR: Final[str] = "markup_factor"  # Aufschlagfaktor für Netz+Steuern+MwSt
 
 # --- Amortisation Helper Sync -------------------------------------------------
 CONF_AMORTISATION_HELPER: Final[str] = "amortisation_helper"
@@ -66,8 +67,9 @@ DEFAULT_SAVINGS_OFFSET: Final[float] = 0.0  # € bereits amortisiert
 DEFAULT_ENERGY_OFFSET_SELF: Final[float] = 0.0  # kWh Eigenverbrauch vor Tracking
 DEFAULT_ENERGY_OFFSET_EXPORT: Final[float] = 0.0  # kWh Export vor Tracking
 
-# Fixpreis Default (Grünwelt classic brutto)
-DEFAULT_FIXED_PRICE: Final[float] = 10.92  # ct/kWh
+# Fixpreis Default (Grünwelt classic netto Arbeitspreis)
+DEFAULT_FIXED_PRICE: Final[float] = 10.92  # ct/kWh netto
+DEFAULT_MARKUP_FACTOR: Final[float] = 2.0  # Faktor für Netz+Steuern+MwSt (10ct → 20ct brutto)
 
 # Stromkontingent Defaults
 DEFAULT_QUOTA_ENABLED: Final[bool] = False
@@ -101,6 +103,7 @@ RANGE_TARIFF_CENT: Final[dict] = {"min": 0.0, "max": 50.0, "step": 0.01}
 RANGE_COST: Final[dict] = {"min": 0.0, "max": 200000.0, "step": 1.0}
 RANGE_OFFSET: Final[dict] = {"min": 0.0, "max": 100000.0, "step": 0.01}
 RANGE_ENERGY_OFFSET: Final[dict] = {"min": 0.0, "max": 500000.0, "step": 0.01}
+RANGE_MARKUP_FACTOR: Final[dict] = {"min": 1.0, "max": 5.0, "step": 0.1}
 
 # Stromkontingent Ranges
 RANGE_QUOTA_KWH: Final[dict] = {"min": 100.0, "max": 100000.0, "step": 1.0}

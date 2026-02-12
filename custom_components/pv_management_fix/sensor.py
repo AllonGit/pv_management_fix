@@ -88,6 +88,7 @@ async def async_setup_entry(
 
         # === DIAGNOSE ===
         FixedPriceSensor(ctrl, name),
+        GrossPriceSensor(ctrl, name),  # EUR/kWh für Energy Dashboard
         CurrentFeedInTariffSensor(ctrl, name),
         PVProductionSensor(ctrl, name),
         InstallationCostSensor(ctrl, name),
@@ -686,6 +687,24 @@ class FixedPriceSensor(BaseEntity):
     @property
     def native_value(self) -> float:
         return round(self.ctrl.fixed_price_ct, 2)
+
+
+class GrossPriceSensor(BaseEntity):
+    """Brutto-Strompreis für Energy Dashboard (EUR/kWh)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Strompreis Brutto",
+            unit="EUR/kWh",
+            icon="mdi:currency-eur",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+    @property
+    def native_value(self) -> float:
+        return round(self.ctrl.gross_price, 4)
 
 
 class CurrentFeedInTariffSensor(BaseEntity):

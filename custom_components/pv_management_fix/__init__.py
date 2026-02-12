@@ -16,14 +16,14 @@ from .const import (
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE, CONF_SAVINGS_OFFSET,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
-    CONF_FIXED_PRICE, CONF_EPEX_PRICE_ENTITY,
+    CONF_FIXED_PRICE, CONF_MARKUP_FACTOR, CONF_EPEX_PRICE_ENTITY,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
-    DEFAULT_FIXED_PRICE, DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
+    DEFAULT_FIXED_PRICE, DEFAULT_MARKUP_FACTOR, DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
     DEFAULT_QUOTA_ENABLED, DEFAULT_QUOTA_YEARLY_KWH,
     DEFAULT_QUOTA_START_METER, DEFAULT_QUOTA_MONTHLY_RATE,
     DEFAULT_QUOTA_SEASONAL, SEASONAL_FACTORS,
@@ -140,8 +140,9 @@ class PVManagementFixController:
         self.energy_offset_self = opts.get(CONF_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_SELF)
         self.energy_offset_export = opts.get(CONF_ENERGY_OFFSET_EXPORT, DEFAULT_ENERGY_OFFSET_EXPORT)
 
-        # Fixpreis (ct/kWh → €/kWh)
+        # Fixpreis (ct/kWh → €/kWh) und Aufschlagfaktor
         self.fixed_price = opts.get(CONF_FIXED_PRICE, DEFAULT_FIXED_PRICE) / 100.0
+        self.markup_factor = opts.get(CONF_MARKUP_FACTOR, DEFAULT_MARKUP_FACTOR)
 
         # Stromkontingent
         self.quota_enabled = opts.get(CONF_QUOTA_ENABLED, DEFAULT_QUOTA_ENABLED)
@@ -157,8 +158,18 @@ class PVManagementFixController:
 
     @property
     def fixed_price_ct(self) -> float:
-        """Fixpreis in ct/kWh."""
+        """Fixpreis netto in ct/kWh."""
         return self.fixed_price * 100
+
+    @property
+    def gross_price(self) -> float:
+        """Brutto-Strompreis in €/kWh (netto × Aufschlagfaktor)."""
+        return self.fixed_price * self.markup_factor
+
+    @property
+    def gross_price_ct(self) -> float:
+        """Brutto-Strompreis in ct/kWh."""
+        return self.gross_price * 100
 
     def _convert_price_to_eur(self, price: float, unit: str, auto_detect: bool = False) -> float:
         """Konvertiert Preis zu Euro/kWh (von Cent falls nötig)."""
@@ -185,9 +196,9 @@ class PVManagementFixController:
 
     @property
     def current_electricity_price(self) -> float:
-        """Aktueller Strompreis in €/kWh (Fixpreis)."""
-        # Bei Fixpreis: Verwende den konfigurierten Fixpreis
-        return self.fixed_price
+        """Aktueller Brutto-Strompreis in €/kWh (für Energy Dashboard)."""
+        # Bei Fixpreis: Verwende den Brutto-Preis (netto × Aufschlagfaktor)
+        return self.gross_price
 
     @property
     def current_feed_in_tariff(self) -> float:
@@ -332,8 +343,8 @@ class PVManagementFixController:
         avg_spot = self.average_electricity_price
         if avg_spot is None:
             return None
-        # Differenz pro kWh: was hätte Spot gekostet - was hat Fixpreis gekostet
-        diff_per_kwh = avg_spot - self.fixed_price
+        # Differenz pro kWh: was hätte Spot gekostet - was hat Fixpreis (brutto) gekostet
+        diff_per_kwh = avg_spot - self.gross_price
         return diff_per_kwh * self._tracked_grid_import_kwh
 
     # =========================================================================
@@ -900,8 +911,8 @@ class PVManagementFixController:
         self_consumption = max(0, pv_total - export_total)
         feed_in = export_total
 
-        # Bei Fixpreis: Berechne mit dem festen Preis
-        savings_self = self_consumption * self.fixed_price
+        # Bei Fixpreis: Berechne mit dem Brutto-Preis (inkl. Netz/Steuern)
+        savings_self = self_consumption * self.gross_price
         earnings_feed = feed_in * self.current_feed_in_tariff
 
         self._total_self_consumption_kwh = self_consumption
@@ -980,8 +991,8 @@ class PVManagementFixController:
         delta_self_consumption = max(0.0, delta_pv - delta_export)
 
         if delta_self_consumption > 0 or delta_export > 0:
-            # Bei Fixpreis: immer der feste Preis
-            price_electricity = self.fixed_price
+            # Bei Fixpreis: Brutto-Preis für Ersparnis (netto × Aufschlagfaktor)
+            price_electricity = self.gross_price
             price_feed_in = self.current_feed_in_tariff
 
             savings_delta = delta_self_consumption * price_electricity
@@ -998,7 +1009,7 @@ class PVManagementFixController:
             if self.has_epex_integration and self._epex_price > 0:
                 import_cost = delta_import * self._epex_price
             else:
-                import_cost = delta_import * self.fixed_price
+                import_cost = delta_import * self.gross_price
 
             self._tracked_grid_import_kwh += delta_import
             self._total_grid_import_cost += import_cost

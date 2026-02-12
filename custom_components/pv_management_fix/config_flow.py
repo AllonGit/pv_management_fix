@@ -11,20 +11,20 @@ from .const import (
     CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
-    CONF_SAVINGS_OFFSET, CONF_FIXED_PRICE,
+    CONF_SAVINGS_OFFSET, CONF_FIXED_PRICE, CONF_MARKUP_FACTOR,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
     CONF_EPEX_PRICE_ENTITY,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
-    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET, DEFAULT_FIXED_PRICE,
+    DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET, DEFAULT_FIXED_PRICE, DEFAULT_MARKUP_FACTOR,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
     DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
     DEFAULT_QUOTA_ENABLED, DEFAULT_QUOTA_YEARLY_KWH,
     DEFAULT_QUOTA_START_METER, DEFAULT_QUOTA_MONTHLY_RATE,
     DEFAULT_QUOTA_SEASONAL,
-    RANGE_COST, RANGE_OFFSET, RANGE_ENERGY_OFFSET,
+    RANGE_COST, RANGE_OFFSET, RANGE_ENERGY_OFFSET, RANGE_MARKUP_FACTOR,
     RANGE_QUOTA_KWH, RANGE_QUOTA_METER, RANGE_QUOTA_RATE,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
 )
@@ -65,6 +65,17 @@ class PVManagementFixConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         selector.NumberSelectorConfig(
                             min=1.0, max=100.0, step=0.01,
                             unit_of_measurement="ct/kWh",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+
+                # === AUFSCHLAGFAKTOR (Netz + Steuern + MwSt) ===
+                vol.Required(CONF_MARKUP_FACTOR, default=DEFAULT_MARKUP_FACTOR):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_MARKUP_FACTOR["min"],
+                            max=RANGE_MARKUP_FACTOR["max"],
+                            step=RANGE_MARKUP_FACTOR["step"],
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
@@ -188,6 +199,17 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                         selector.NumberSelectorConfig(
                             min=1.0, max=100.0, step=0.01,
                             unit_of_measurement="ct/kWh",
+                            mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+
+                # Aufschlagfaktor (Netz + Steuern + MwSt)
+                vol.Required(CONF_MARKUP_FACTOR, default=self._get_val(CONF_MARKUP_FACTOR, DEFAULT_MARKUP_FACTOR)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_MARKUP_FACTOR["min"],
+                            max=RANGE_MARKUP_FACTOR["max"],
+                            step=RANGE_MARKUP_FACTOR["step"],
                             mode=selector.NumberSelectorMode.BOX
                         )
                     ),
