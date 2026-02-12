@@ -11,9 +11,11 @@ Calculates the amortization of your PV system and optionally compares with spot 
 
 - **Amortization calculation** - How much of your PV system is already paid off?
 - **Energy tracking** - Self-consumption and feed-in (incremental, persistent)
+- **Helper sync** - Saves values to input_number for maximum persistence
 - **Savings statistics** - Per day, month, year + forecast
 - **Spot comparison** (optional) - Would spot pricing have been cheaper than your fixed price?
-- **Electricity quota** (new in v1.1.0) - Yearly kWh budget tracking for fixed-price tariffs
+- **Electricity quota** - Yearly kWh budget tracking for fixed-price tariffs
+- **Event notifications** - Automatic events for milestones, quota warnings, monthly summaries
 
 ## Installation
 
@@ -150,7 +152,77 @@ For **spot tariffs** (aWATTar, smartENERGY) with battery management use:
 | Solcast | Yes | No |
 | Spot Comparison | Yes | Yes (optional) |
 
+## Events (Notifications)
+
+The integration fires `pv_management_event` events for your own automations:
+
+### Milestone Events
+```yaml
+event_type: pv_management_event
+event_data:
+  type: "amortisation_milestone"  # or "amortisation_complete"
+  milestone: 50  # 25, 50, 75, 100
+  total_savings: 3500.00
+  remaining: 3500.00
+  installation_cost: 7000.00
+  message: "50% amortized!"
+```
+
+### Quota Warnings
+```yaml
+event_type: pv_management_event
+event_data:
+  type: "quota_warning_80"  # or "quota_warning_100", "quota_over_budget"
+  consumed_percent: 80.5
+  remaining_kwh: 780
+  reserve_kwh: -50
+  message: "80% of electricity quota consumed!"
+```
+
+### Monthly Summary
+```yaml
+event_type: pv_management_event
+event_data:
+  type: "monthly_summary"
+  month: "January 2025"
+  grid_import_kwh: 180.5
+  grid_import_cost: 32.50
+  amortisation_percent: 52.3
+  total_savings: 3661.00
+  message: "PV report January 2025: 180 kWh grid import, 52.3% amortized"
+```
+
+### Example Automation
+
+```yaml
+alias: "PV Milestone Notification"
+trigger:
+  - platform: event
+    event_type: pv_management_event
+    event_data:
+      type: amortisation_milestone
+action:
+  - service: notify.mobile_app
+    data:
+      title: "PV Milestone reached!"
+      message: "{{ trigger.event.data.message }}"
+```
+
 ## Changelog
+
+### v1.4.0
+- **NEW: Helper-Sync** - Required input_number for persistent savings storage
+- **NEW: Milestone events** - Automatic events at 25%, 50%, 75%, 100% amortization
+- **NEW: Quota warnings** - Events at 80%, 100% consumption and over-budget
+- **NEW: Monthly summary** - Event on 1st of month with statistics
+
+### v1.3.0
+- Helper-Sync prepared (base integration)
+- Quota tracking improvements
+
+### v1.2.0
+- Improved quota calculations
+- Better seasonal factors
 
 ### v1.1.0
 - New: Electricity quota (Stromkontingent) - yearly kWh budget tracking
