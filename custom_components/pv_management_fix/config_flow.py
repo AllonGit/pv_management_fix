@@ -14,6 +14,7 @@ from .const import (
     CONF_SAVINGS_OFFSET, CONF_FIXED_PRICE,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
     CONF_EPEX_PRICE_ENTITY,
+    CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
@@ -97,6 +98,12 @@ class PVManagementFixConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     ),
                 vol.Optional(CONF_INSTALLATION_DATE): selector.DateSelector(),
+
+                # === AMORTISATION HELPER (Pflicht für Persistenz) ===
+                vol.Required(CONF_AMORTISATION_HELPER): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="input_number")
+                ),
+                vol.Optional(CONF_RESTORE_FROM_HELPER, default=False): selector.BooleanSelector(),
             })
         )
 
@@ -128,6 +135,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
             menu_options={
                 "sensors": "Sensoren",
                 "prices": "Strompreise & Amortisation",
+                "helper": "Amortisation Helper",
                 "offsets": "Historische Daten",
                 "quota": "Stromkontingent",
                 "save": "Speichern & Schließen",
@@ -213,6 +221,26 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_INSTALLATION_DATE, default=self._get_val(CONF_INSTALLATION_DATE)):
                     selector.DateSelector(),
             })
+        )
+
+    async def async_step_helper(self, user_input=None):
+        """Amortisation Helper konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="helper",
+            data_schema=vol.Schema({
+                vol.Required(CONF_AMORTISATION_HELPER, default=self._get_val(CONF_AMORTISATION_HELPER)):
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="input_number")
+                    ),
+                vol.Optional(CONF_RESTORE_FROM_HELPER, default=self._get_val(CONF_RESTORE_FROM_HELPER, False)):
+                    selector.BooleanSelector(),
+            }),
+            description_placeholders={
+                "info": "Der Helper speichert die Gesamtersparnis (EUR) unabhängig von der Integration."
+            }
         )
 
     async def async_step_offsets(self, user_input=None):

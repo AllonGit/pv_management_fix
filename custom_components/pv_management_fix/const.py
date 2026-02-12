@@ -43,6 +43,10 @@ CONF_INSTALLATION_DATE: Final[str] = "installation_date"
 # --- Fixpreis (Haupt-Feature dieser Integration) ------------------------------
 CONF_FIXED_PRICE: Final[str] = "fixed_price"  # Der Fixpreis in ct/kWh
 
+# --- Amortisation Helper Sync -------------------------------------------------
+CONF_AMORTISATION_HELPER: Final[str] = "amortisation_helper"
+CONF_RESTORE_FROM_HELPER: Final[str] = "restore_from_helper"
+
 # --- Stromkontingent (Jahres-kWh-Budget) --------------------------------------
 CONF_QUOTA_ENABLED: Final[str] = "quota_enabled"
 CONF_QUOTA_YEARLY_KWH: Final[str] = "quota_yearly_kwh"

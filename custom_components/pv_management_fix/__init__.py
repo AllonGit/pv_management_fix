@@ -17,6 +17,7 @@ from .const import (
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE, CONF_SAVINGS_OFFSET,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
     CONF_FIXED_PRICE, CONF_EPEX_PRICE_ENTITY,
+    CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
@@ -142,6 +143,10 @@ class PVManagementFixController:
         self.quota_start_meter = opts.get(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)
         self.quota_monthly_rate = opts.get(CONF_QUOTA_MONTHLY_RATE, DEFAULT_QUOTA_MONTHLY_RATE)
         self.quota_seasonal = opts.get(CONF_QUOTA_SEASONAL, DEFAULT_QUOTA_SEASONAL)
+
+        # Amortisation Helper (Pflicht für Persistenz)
+        self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
+        self.restore_from_helper = opts.get(CONF_RESTORE_FROM_HELPER, False)
 
     @property
     def fixed_price_ct(self) -> float:
@@ -609,6 +614,74 @@ class PVManagementFixController:
             except Exception as e:
                 _LOGGER.debug("Entity-Listener Fehler (ignoriert): %s", e)
 
+        # Sync to helper after every update
+        self._sync_to_helper()
+
+    def _sync_to_helper(self) -> None:
+        """Synchronisiert die Gesamtersparnis zum Helper."""
+        if not self.amortisation_helper:
+            return
+
+        try:
+            current_savings = self.total_savings
+            state = self.hass.states.get(self.amortisation_helper)
+
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    helper_value = float(state.state)
+                    # Nur updaten wenn sich der Wert signifikant geändert hat (> 0.01 EUR)
+                    if abs(helper_value - current_savings) > 0.01:
+                        self.hass.async_create_task(
+                            self.hass.services.async_call(
+                                "input_number",
+                                "set_value",
+                                {
+                                    "entity_id": self.amortisation_helper,
+                                    "value": round(current_savings, 2),
+                                },
+                            )
+                        )
+                        _LOGGER.debug(
+                            "Amortisation Helper synced: %.2f EUR → %s",
+                            current_savings, self.amortisation_helper
+                        )
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Helper sync error: %s", e)
+        except Exception as e:
+            _LOGGER.debug("Helper sync failed (ignoriert): %s", e)
+
+    async def _restore_from_helper(self) -> bool:
+        """Stellt die Gesamtersparnis vom Helper wieder her."""
+        if not self.amortisation_helper or not self.restore_from_helper:
+            return False
+
+        try:
+            state = self.hass.states.get(self.amortisation_helper)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                helper_value = float(state.state)
+
+                if helper_value > 0:
+                    # Berechne Eigenverbrauch/Einspeisung aus Gesamtersparnis
+                    # Vereinfachung: Nutze nur savings_offset und accumulated values
+                    _LOGGER.info(
+                        "Restoring from helper %s: %.2f EUR",
+                        self.amortisation_helper, helper_value
+                    )
+
+                    # Setze den Offset so, dass total_savings dem Helper entspricht
+                    # total_savings = savings_offset + accumulated_savings_self + accumulated_earnings_feed
+                    # Also: savings_offset = helper_value - (accumulated_savings_self + accumulated_earnings_feed)
+                    current_accumulated = self._accumulated_savings_self + self._accumulated_earnings_feed
+                    self.savings_offset = max(0, helper_value - current_accumulated)
+
+                    self._restored = True
+                    self._notify_entities()
+                    return True
+        except (ValueError, TypeError) as e:
+            _LOGGER.warning("Restore from helper failed: %s", e)
+
+        return False
+
     def restore_state(self, data: dict[str, Any]) -> None:
         """Stellt den gespeicherten Zustand wieder her."""
         def safe_float(val, default=0.0):
@@ -900,6 +973,12 @@ class PVManagementFixController:
         self._last_pv_production_kwh = self._pv_production_kwh
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
+
+        # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
+        if self.restore_from_helper and self.amortisation_helper:
+            restored = await self._restore_from_helper()
+            if restored:
+                _LOGGER.info("Amortisation erfolgreich von Helper wiederhergestellt")
 
         @callback
         def delayed_init_check(_now: datetime) -> None:
