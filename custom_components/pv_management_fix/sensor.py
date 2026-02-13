@@ -95,6 +95,7 @@ async def async_setup_entry(
         ConfigurationDiagnosticSensor(ctrl, name, entry),
 
         # === STROMPREIS-VERGLEICH (Spot vs Fixpreis) ===
+        DailyNetElectricityCostSensor(ctrl, name),
         TotalGridImportCostSensor(ctrl, name),
         FixedVsSpotSensor(ctrl, name),
     ]
@@ -829,6 +830,34 @@ class ConfigurationDiagnosticSensor(BaseEntity):
 # =============================================================================
 # SPOT VS FIXPREIS VERGLEICH
 # =============================================================================
+
+
+class DailyNetElectricityCostSensor(BaseEntity):
+    """Tägliche Netto-Stromkosten: Einkauf minus Einspeisung."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Stromkosten Heute",
+            unit="€",
+            icon="mdi:cash-register",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_class=SensorDeviceClass.MONETARY,
+            device_type=DEVICE_PRICES,
+        )
+
+    @property
+    def native_value(self) -> float:
+        return round(self.ctrl.daily_net_electricity_cost, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "einkauf_eur": round(self.ctrl.daily_grid_import_cost, 2),
+            "einspeisung_eur": round(self.ctrl.daily_feed_in_earnings, 2),
+            "einkauf_kwh": round(self.ctrl.daily_grid_import_kwh, 2),
+        }
 
 
 class TotalGridImportCostSensor(BaseEntity):

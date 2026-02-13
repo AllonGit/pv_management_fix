@@ -88,6 +88,7 @@ class PVManagementFixController:
         # Tägliches Strompreis-Tracking
         self._daily_grid_import_cost = 0.0
         self._daily_grid_import_kwh = 0.0
+        self._daily_feed_in_earnings = 0.0
         self._daily_tracking_date: date | None = None
 
         # Monatliches Strompreis-Tracking
@@ -317,6 +318,16 @@ class PVManagementFixController:
     def daily_grid_import_cost(self) -> float:
         """Tägliche Netzbezugskosten in €."""
         return self._daily_grid_import_cost
+
+    @property
+    def daily_feed_in_earnings(self) -> float:
+        """Tägliche Einspeisevergütung in €."""
+        return self._daily_feed_in_earnings
+
+    @property
+    def daily_net_electricity_cost(self) -> float:
+        """Tägliche Netto-Stromkosten (Einkauf minus Verkauf) in €."""
+        return self._daily_grid_import_cost - self._daily_feed_in_earnings
 
     @property
     def monthly_grid_import_kwh(self) -> float:
@@ -844,6 +855,7 @@ class PVManagementFixController:
                 if daily_reset_date == today:
                     self._daily_grid_import_kwh = safe_float(data.get("daily_grid_import_kwh"))
                     self._daily_grid_import_cost = safe_float(data.get("daily_grid_import_cost"))
+                    self._daily_feed_in_earnings = safe_float(data.get("daily_feed_in_earnings"))
             except (ValueError, TypeError):
                 pass
 
@@ -940,6 +952,7 @@ class PVManagementFixController:
             "total_grid_import_cost": self._total_grid_import_cost,
             "daily_grid_import_kwh": self._daily_grid_import_kwh,
             "daily_grid_import_cost": self._daily_grid_import_cost,
+            "daily_feed_in_earnings": self._daily_feed_in_earnings,
             "daily_reset_date": today.isoformat(),
             "monthly_grid_import_kwh": self._monthly_grid_import_kwh,
             "monthly_grid_import_cost": self._monthly_grid_import_cost,
@@ -990,6 +1003,14 @@ class PVManagementFixController:
 
         delta_self_consumption = max(0.0, delta_pv - delta_export)
 
+        # Tägliches Tracking: Reset bei Tageswechsel
+        today = date.today()
+        if self._daily_tracking_date != today:
+            self._daily_grid_import_cost = 0.0
+            self._daily_grid_import_kwh = 0.0
+            self._daily_feed_in_earnings = 0.0
+            self._daily_tracking_date = today
+
         if delta_self_consumption > 0 or delta_export > 0:
             # Bei Fixpreis: Brutto-Preis für Ersparnis (netto × Aufschlagfaktor)
             price_electricity = self.gross_price
@@ -1002,6 +1023,7 @@ class PVManagementFixController:
             self._total_feed_in_kwh += delta_export
             self._accumulated_savings_self += savings_delta
             self._accumulated_earnings_feed += earnings_delta
+            self._daily_feed_in_earnings += earnings_delta
 
         # Strompreis-Tracking (für Spot-Vergleich, falls EPEX konfiguriert)
         if delta_import > 0:
@@ -1014,11 +1036,6 @@ class PVManagementFixController:
             self._tracked_grid_import_kwh += delta_import
             self._total_grid_import_cost += import_cost
 
-            today = date.today()
-            if self._daily_tracking_date != today:
-                self._daily_grid_import_cost = 0.0
-                self._daily_grid_import_kwh = 0.0
-                self._daily_tracking_date = today
             self._daily_grid_import_kwh += delta_import
             self._daily_grid_import_cost += import_cost
 
