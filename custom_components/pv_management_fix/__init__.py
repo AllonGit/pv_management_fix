@@ -805,14 +805,14 @@ class PVManagementFixController:
                     message = f"PV-Anlage vollständig amortisiert! +{profit:.2f}€ Gewinn!"
                     event_type = "amortisation_complete"
                 else:
-                    message = f"{milestone}% der PV-Anlage amortisiert! Noch {self.remaining_amount:.2f}€ bis zur Amortisation."
+                    message = f"{milestone}% der PV-Anlage amortisiert! Noch {self.remaining_cost:.2f}€ bis zur Amortisation."
                     event_type = "amortisation_milestone"
 
                 self.hass.bus.async_fire("pv_management_event", {
                     "type": event_type,
                     "milestone": milestone,
                     "total_savings": round(self.total_savings, 2),
-                    "remaining": round(self.remaining_amount, 2),
+                    "remaining": round(self.remaining_cost, 2),
                     "installation_cost": self.installation_cost,
                     "message": message,
                 })

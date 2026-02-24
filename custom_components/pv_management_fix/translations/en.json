@@ -49,6 +49,7 @@
         "menu_options": {
           "sensors": "Sensors",
           "prices": "Electricity Prices & Amortization",
+          "helper": "Amortization Helper",
           "offsets": "Historical Data",
           "quota": "Electricity Quota",
           "battery": "Battery",

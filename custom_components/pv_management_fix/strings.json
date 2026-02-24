@@ -49,6 +49,7 @@
         "menu_options": {
           "sensors": "Sensoren",
           "prices": "Strompreise & Amortisation",
+          "helper": "Amortisation Helper",
           "offsets": "Historische Daten",
           "quota": "Stromkontingent",
           "battery": "Batterie",
