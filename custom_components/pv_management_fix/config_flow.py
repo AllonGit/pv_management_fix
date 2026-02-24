@@ -185,6 +185,13 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
             })
         )
 
+    def _optional_entity(self, key):
+        """Erstellt vol.Optional für Entity-Selector (ohne default=None, da HA das nicht mag)."""
+        val = self._get_val(key)
+        if val:
+            return vol.Optional(key, default=val)
+        return vol.Optional(key)
+
     async def async_step_prices(self, user_input=None):
         """Strompreise und Amortisation konfigurieren."""
         if user_input is not None:
@@ -215,7 +222,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                     ),
 
                 # Dynamischer Strompreis (optional)
-                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=self._get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
+                self._optional_entity(CONF_ELECTRICITY_PRICE_ENTITY):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 # Einspeisevergütung
@@ -233,7 +240,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(min=0.0, max=50.0, step=0.001, mode=selector.NumberSelectorMode.BOX)
                     ),
-                vol.Optional(CONF_FEED_IN_TARIFF_ENTITY, default=self._get_val(CONF_FEED_IN_TARIFF_ENTITY)):
+                self._optional_entity(CONF_FEED_IN_TARIFF_ENTITY):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 # Amortisation
