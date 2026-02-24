@@ -159,10 +159,20 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
 
     async def _save_and_return_to_menu(self, user_input):
         """Speichert die Options und zeigt das Menü wieder an."""
+        # Optionale Entity-Keys: wenn nicht im Input, explizit auf None setzen
+        # damit ein entfernter Sensor auch wirklich gelöscht wird
+        for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY):
+            if key not in user_input and key in self.config_entry.options:
+                user_input[key] = None
+
         self._data.update(user_input)
         final_data = {}
         final_data.update(self.config_entry.options)
         final_data.update(self._data)
+
+        # None-Werte aufräumen (verhindert "Entity None" Fehler)
+        final_data = {k: v for k, v in final_data.items() if v is not None}
+
         self.hass.config_entries.async_update_entry(self.config_entry, options=final_data)
         return await self.async_step_init()
 
