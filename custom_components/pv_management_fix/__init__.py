@@ -507,17 +507,27 @@ class PVManagementFixController:
         return self.total_savings >= self.installation_cost
 
     @property
+    def _current_self_consumption_kwh(self) -> float:
+        """Aktueller Eigenverbrauch in kWh (Batterie-kompatibel).
+
+        Bevorzugt: Verbrauch - Netzbezug (korrekt bei Batterie-Systemen).
+        Fallback: PV - Export (nur korrekt ohne Batterie).
+        """
+        if self.consumption_entity and self._consumption_kwh > 0 and self.grid_import_entity:
+            return max(0.0, self._consumption_kwh - self._grid_import_kwh)
+        return max(0.0, self._pv_production_kwh - self._grid_export_kwh)
+
+    @property
     def self_consumption_ratio(self) -> float:
-        """Eigenverbrauchsquote (%)."""
+        """Eigenverbrauchsquote (%) - Anteil der PV-Produktion der selbst verbraucht wird."""
         if self._pv_production_kwh <= 0:
             return 0.0
-        current_self = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
-        return min(100.0, (current_self / self._pv_production_kwh) * 100)
+        return min(100.0, (self._current_self_consumption_kwh / self._pv_production_kwh) * 100)
 
     @property
     def autarky_rate(self) -> float | None:
         """Autarkiegrad (%) - Anteil des Verbrauchs der durch PV gedeckt wird."""
-        self_consumption = max(0.0, self._pv_production_kwh - self._grid_export_kwh)
+        self_consumption = self._current_self_consumption_kwh
         if self_consumption <= 0:
             return None
         if self.consumption_entity and self._consumption_kwh > 0:
