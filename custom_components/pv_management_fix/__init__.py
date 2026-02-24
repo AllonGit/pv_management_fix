@@ -16,7 +16,7 @@ from .const import (
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE, CONF_SAVINGS_OFFSET,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
-    CONF_FIXED_PRICE, CONF_MARKUP_FACTOR, CONF_EPEX_PRICE_ENTITY,
+    CONF_FIXED_PRICE, CONF_MARKUP_FACTOR,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
@@ -65,9 +65,6 @@ class PVManagementFixController:
         self._grid_export_kwh = 0.0
         self._grid_import_kwh = 0.0
         self._consumption_kwh = 0.0
-
-        # EPEX Spot Preis (nur für Vergleich)
-        self._epex_price = 0.0
 
         # Letzte bekannte Preise (für Fallback wenn Sensor temporär nicht verfügbar)
         self._last_known_electricity_price: float | None = None
@@ -122,9 +119,6 @@ class PVManagementFixController:
         self.grid_import_entity = opts.get(CONF_GRID_IMPORT_ENTITY)
         self.consumption_entity = opts.get(CONF_CONSUMPTION_ENTITY)
 
-        # EPEX Spot (nur für Vergleich)
-        self.epex_price_entity = opts.get(CONF_EPEX_PRICE_ENTITY)
-
         # Preis-Konfiguration
         self.electricity_price = opts.get(CONF_ELECTRICITY_PRICE, DEFAULT_ELECTRICITY_PRICE)
         self.electricity_price_entity = opts.get(CONF_ELECTRICITY_PRICE_ENTITY)
@@ -166,7 +160,7 @@ class PVManagementFixController:
     @property
     def gross_price(self) -> float:
         """Brutto-Strompreis in €/kWh (netto × Aufschlagfaktor)."""
-        return self.fixed_price * self.markup_factor
+        return self.current_electricity_price * self.markup_factor
 
     @property
     def gross_price_ct(self) -> float:
@@ -198,9 +192,21 @@ class PVManagementFixController:
 
     @property
     def current_electricity_price(self) -> float:
-        """Aktueller Brutto-Strompreis in €/kWh (für Energy Dashboard)."""
-        # Bei Fixpreis: Verwende den Brutto-Preis (netto × Aufschlagfaktor)
-        return self.gross_price
+        """Aktueller Netto-Strompreis in €/kWh (aus Sensor oder statischem Fixpreis)."""
+        if self.electricity_price_entity:
+            raw_price, is_available = self._get_entity_value(
+                self.electricity_price_entity, self.fixed_price
+            )
+            self._price_sensor_available = is_available
+            if is_available:
+                # Auto-detect: > 1 = wahrscheinlich ct/kWh
+                price_eur = self._convert_price_to_eur(raw_price, self.electricity_price_unit, auto_detect=True)
+                self._last_known_electricity_price = price_eur
+                return price_eur
+            elif self._last_known_electricity_price is not None:
+                return self._last_known_electricity_price
+        self._price_sensor_available = True
+        return self.fixed_price
 
     @property
     def current_feed_in_tariff(self) -> float:
@@ -217,21 +223,6 @@ class PVManagementFixController:
                 return self._convert_price_to_eur(self._last_known_feed_in_tariff, self.feed_in_tariff_unit, auto_detect=True)
         self._tariff_sensor_available = True
         return self._convert_price_to_eur(self.feed_in_tariff, self.feed_in_tariff_unit, auto_detect=False)
-
-    @property
-    def epex_price(self) -> float:
-        """Aktueller EPEX Spot Preis in €/kWh (für Vergleich)."""
-        return self._epex_price
-
-    @property
-    def epex_price_ct(self) -> float:
-        """Aktueller EPEX Spot Preis in ct/kWh."""
-        return self._epex_price * 100
-
-    @property
-    def has_epex_integration(self) -> bool:
-        """Prüft ob EPEX Spot konfiguriert ist."""
-        return bool(self.epex_price_entity)
 
     # =========================================================================
     # ENERGIE PROPERTIES
@@ -344,25 +335,6 @@ class PVManagementFixController:
     def monthly_grid_import_cost(self) -> float:
         """Monatliche Netzbezugskosten in €."""
         return self._monthly_grid_import_cost
-
-    # =========================================================================
-    # SPOT VS FIXPREIS VERGLEICH
-    # =========================================================================
-
-    @property
-    def spot_vs_fixed_savings(self) -> float | None:
-        """
-        Ersparnis Fixpreis gegenüber Spot-Tarif.
-        Positiv = Fixpreis günstiger als Spot, Negativ = Spot wäre günstiger.
-        """
-        if not self.has_epex_integration:
-            return None
-        avg_spot = self.average_electricity_price
-        if avg_spot is None:
-            return None
-        # Differenz pro kWh: was hätte Spot gekostet - was hat Fixpreis (brutto) gekostet
-        diff_per_kwh = avg_spot - self.gross_price
-        return diff_per_kwh * self._tracked_grid_import_kwh
 
     # =========================================================================
     # STROMKONTINGENT
@@ -1035,13 +1007,9 @@ class PVManagementFixController:
             self._daily_feed_in_earnings += earnings_delta
             self._daily_feed_in_kwh += delta_export
 
-        # Strompreis-Tracking (für Spot-Vergleich, falls EPEX konfiguriert)
+        # Strompreis-Tracking
         if delta_import > 0:
-            # Hier tracken wir den EPEX Preis für Vergleich
-            if self.has_epex_integration and self._epex_price > 0:
-                import_cost = delta_import * self._epex_price
-            else:
-                import_cost = delta_import * self.gross_price
+            import_cost = delta_import * self.gross_price
 
             self._tracked_grid_import_kwh += delta_import
             self._total_grid_import_cost += import_cost
@@ -1092,13 +1060,6 @@ class PVManagementFixController:
             changed = True
         elif entity_id == self.consumption_entity:
             self._consumption_kwh = value
-        elif entity_id == self.epex_price_entity:
-            # EPEX Preis auto-detect: > 1 = wahrscheinlich ct/kWh
-            if value > 1.0:
-                self._epex_price = value / 100.0
-            else:
-                self._epex_price = value
-            self._notify_entities()
 
         if changed:
             self._process_energy_update()
@@ -1119,19 +1080,6 @@ class PVManagementFixController:
                         setattr(self, attr, float(state.state))
                     except (ValueError, TypeError):
                         pass
-
-        # EPEX Preis laden
-        if self.epex_price_entity:
-            state = self.hass.states.get(self.epex_price_entity)
-            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-                try:
-                    value = float(state.state)
-                    if value > 1.0:
-                        self._epex_price = value / 100.0
-                    else:
-                        self._epex_price = value
-                except (ValueError, TypeError):
-                    pass
 
         self._last_pv_production_kwh = self._pv_production_kwh
         self._last_grid_export_kwh = self._grid_export_kwh

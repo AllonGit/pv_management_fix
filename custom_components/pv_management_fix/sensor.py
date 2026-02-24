@@ -99,9 +99,6 @@ async def async_setup_entry(
         DailyGridImportSensor(ctrl, name),
         DailyNetElectricityCostSensor(ctrl, name),
 
-        # === STROMPREIS-VERGLEICH (Spot vs Fixpreis) ===
-        TotalGridImportCostSensor(ctrl, name),
-        FixedVsSpotSensor(ctrl, name),
     ]
 
     # === STROMKONTINGENT (nur wenn aktiviert) ===
@@ -801,7 +798,6 @@ class ConfigurationDiagnosticSensor(BaseEntity):
         export_status = self._get_entity_status(self.ctrl.grid_export_entity)
         import_status = self._get_entity_status(self.ctrl.grid_import_entity)
         consumption_status = self._get_entity_status(self.ctrl.consumption_entity)
-        epex_status = self._get_entity_status(self.ctrl.epex_price_entity)
 
         return {
             "pv_production_entity": pv_status["entity_id"],
@@ -812,15 +808,12 @@ class ConfigurationDiagnosticSensor(BaseEntity):
             "grid_import_status": import_status["status"],
             "consumption_entity": consumption_status["entity_id"],
             "consumption_status": consumption_status["status"],
-            "epex_price_entity": epex_status["entity_id"],
-            "epex_price_status": epex_status["status"],
             "fixed_price_ct": f"{self.ctrl.fixed_price_ct:.2f}",
             "feed_in_tariff_eur": f"{self.ctrl.current_feed_in_tariff:.4f}",
             "tracked_self_consumption_kwh": round(self.ctrl._total_self_consumption_kwh, 4),
             "tracked_feed_in_kwh": round(self.ctrl._total_feed_in_kwh, 4),
             "first_seen_date": self.ctrl._first_seen_date.isoformat() if self.ctrl._first_seen_date else None,
             "days_tracked": self.ctrl.days_since_installation,
-            "has_epex_integration": self.ctrl.has_epex_integration,
         }
 
     @property
@@ -832,7 +825,7 @@ class ConfigurationDiagnosticSensor(BaseEntity):
 
 
 # =============================================================================
-# SPOT VS FIXPREIS VERGLEICH
+# TÄGLICHE STROMKOSTEN
 # =============================================================================
 
 
@@ -916,105 +909,6 @@ class DailyNetElectricityCostSensor(BaseEntity):
             "netzbezug_eur": round(self.ctrl.daily_grid_import_cost, 2),
             "einspeisung_eur": round(self.ctrl.daily_feed_in_earnings, 2),
         }
-
-
-class TotalGridImportCostSensor(BaseEntity):
-    """Gesamtkosten für Netzbezug (Spot-Preis Tracking)."""
-
-    def __init__(self, ctrl, name: str):
-        super().__init__(
-            ctrl,
-            name,
-            "Netzbezug Kosten (Spot)",
-            unit="€",
-            icon="mdi:cash-minus",
-            state_class=SensorStateClass.TOTAL,
-            device_class=SensorDeviceClass.MONETARY,
-            device_type=DEVICE_PRICES,
-        )
-
-    @property
-    def native_value(self) -> float:
-        return round(self.ctrl.total_grid_import_cost, 2)
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        avg = self.ctrl.average_electricity_price_ct
-        return {
-            "verbrauch_kwh": round(self.ctrl.tracked_grid_import_kwh, 2),
-            "durchschnittspreis_ct": f"{avg:.2f}" if avg else None,
-            "hinweis": "Kosten wenn Spot-Tarif" if self.ctrl.has_epex_integration else "Gleich wie Fixpreis",
-        }
-
-
-class FixedVsSpotSensor(BaseEntity):
-    """
-    Vergleich Fixpreis vs. Spot-Tarif.
-
-    Positiv = Fixpreis günstiger, Negativ = Spot wäre günstiger.
-    """
-
-    def __init__(self, ctrl, name: str):
-        super().__init__(
-            ctrl,
-            name,
-            "Fixpreis vs Spot",
-            unit="€",
-            icon="mdi:scale-balance",
-            state_class=SensorStateClass.MEASUREMENT,
-            device_class=SensorDeviceClass.MONETARY,
-            device_type=DEVICE_PRICES,
-        )
-
-    @property
-    def native_value(self) -> float | None:
-        savings = self.ctrl.spot_vs_fixed_savings
-        if savings is None:
-            return None
-        return round(savings, 2)
-
-    @property
-    def icon(self) -> str:
-        savings = self.ctrl.spot_vs_fixed_savings
-        if savings is None:
-            return "mdi:scale-balance"
-        elif savings > 0:
-            return "mdi:thumb-up"  # Fixpreis günstiger
-        elif savings < 0:
-            return "mdi:thumb-down"  # Spot wäre günstiger
-        return "mdi:scale-balance"
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        fixed_ct = self.ctrl.fixed_price_ct
-        avg_spot_ct = self.ctrl.average_electricity_price_ct
-        savings = self.ctrl.spot_vs_fixed_savings
-        kwh = self.ctrl.tracked_grid_import_kwh
-
-        attrs = {
-            "fixpreis_ct": round(fixed_ct, 2),
-            "spot_durchschnitt_ct": round(avg_spot_ct, 2) if avg_spot_ct else None,
-            "verbrauch_kwh": round(kwh, 2),
-        }
-
-        if avg_spot_ct and kwh > 0:
-            fixed_cost = kwh * (fixed_ct / 100)
-            spot_cost = self.ctrl.total_grid_import_cost
-            attrs["fixpreis_kosten_eur"] = round(fixed_cost, 2)
-            attrs["spot_kosten_eur"] = round(spot_cost, 2)
-            attrs["differenz_pro_kwh_ct"] = round(avg_spot_ct - fixed_ct, 2) if avg_spot_ct else None
-
-            if savings and savings > 0:
-                attrs["fazit"] = f"Fixpreis {abs(savings):.2f}€ günstiger"
-            elif savings and savings < 0:
-                attrs["fazit"] = f"Spot wäre {abs(savings):.2f}€ günstiger"
-            else:
-                attrs["fazit"] = "Etwa gleich"
-
-        if not self.ctrl.has_epex_integration:
-            attrs["hinweis"] = "Kein EPEX Sensor konfiguriert - Vergleich nicht möglich"
-
-        return attrs
 
 
 # =============================================================================

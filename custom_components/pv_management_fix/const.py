@@ -20,9 +20,6 @@ CONF_GRID_EXPORT_ENTITY: Final[str] = "grid_export_entity"
 CONF_GRID_IMPORT_ENTITY: Final[str] = "grid_import_entity"
 CONF_CONSUMPTION_ENTITY: Final[str] = "consumption_entity"
 
-# --- EPEX Spot Integration (nur für Spot vs Fix Vergleich) --------------------
-CONF_EPEX_PRICE_ENTITY: Final[str] = "epex_price_entity"
-
 # --- Option keys (können später geändert werden) ------------------------------
 CONF_ELECTRICITY_PRICE: Final[str] = "electricity_price"
 CONF_ELECTRICITY_PRICE_ENTITY: Final[str] = "electricity_price_entity"

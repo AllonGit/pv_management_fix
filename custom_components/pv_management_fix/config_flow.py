@@ -8,12 +8,11 @@ from .const import (
     DOMAIN,
     CONF_NAME, CONF_PV_PRODUCTION_ENTITY, CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY, CONF_CONSUMPTION_ENTITY,
-    CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_UNIT,
+    CONF_ELECTRICITY_PRICE, CONF_ELECTRICITY_PRICE_ENTITY, CONF_ELECTRICITY_PRICE_UNIT,
     CONF_FEED_IN_TARIFF, CONF_FEED_IN_TARIFF_ENTITY, CONF_FEED_IN_TARIFF_UNIT,
     CONF_INSTALLATION_COST, CONF_INSTALLATION_DATE,
     CONF_SAVINGS_OFFSET, CONF_FIXED_PRICE, CONF_MARKUP_FACTOR,
     CONF_ENERGY_OFFSET_SELF, CONF_ENERGY_OFFSET_EXPORT,
-    CONF_EPEX_PRICE_ENTITY,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
@@ -79,6 +78,11 @@ class PVManagementFixConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+
+                # === DYNAMISCHER STROMPREIS (optional) ===
+                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
 
                 # === EINSPEISEVERGÜTUNG ===
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=DEFAULT_FEED_IN_TARIFF_UNIT):
@@ -178,10 +182,6 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
                 vol.Optional(CONF_CONSUMPTION_ENTITY, default=self._get_val(CONF_CONSUMPTION_ENTITY)):
                     selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-
-                # EPEX Spot (optional, für Vergleich)
-                vol.Optional(CONF_EPEX_PRICE_ENTITY, default=self._get_val(CONF_EPEX_PRICE_ENTITY)):
-                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
             })
         )
 
@@ -213,6 +213,10 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX
                         )
                     ),
+
+                # Dynamischer Strompreis (optional)
+                vol.Optional(CONF_ELECTRICITY_PRICE_ENTITY, default=self._get_val(CONF_ELECTRICITY_PRICE_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
 
                 # Einspeisevergütung
                 vol.Required(CONF_FEED_IN_TARIFF_UNIT, default=self._get_val(CONF_FEED_IN_TARIFF_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT)):

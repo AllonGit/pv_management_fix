@@ -12,6 +12,7 @@
           "consumption_entity": "Hausverbrauch Sensor (kWh, optional)",
           "fixed_price": "Arbeitspreis netto (ct/kWh)",
           "markup_factor": "Aufschlagfaktor",
+          "electricity_price_entity": "Dynamischer Strompreis Sensor (optional)",
           "feed_in_tariff_unit": "Einspeisevergütung-Einheit",
           "feed_in_tariff": "Einspeisevergütung",
           "installation_cost": "Anschaffungskosten",
@@ -25,6 +26,7 @@
           "consumption_entity": "Sensor für Gesamtverbrauch des Haushalts in kWh",
           "fixed_price": "Arbeitspreis netto vom Anbieter (z.B. 10.92 ct/kWh für Grünwelt classic)",
           "markup_factor": "Faktor für Netz, Steuern, MwSt (Standard: 2.0). Brutto = Netto × Faktor",
+          "electricity_price_entity": "Optional: Sensor für dynamischen Strompreis (überschreibt den statischen Arbeitspreis)",
           "feed_in_tariff_unit": "Wähle ob die Einspeisevergütung in Euro oder Cent pro kWh angegeben wird",
           "feed_in_tariff": "Einspeisevergütung vom Netzbetreiber",
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Installation",
@@ -59,15 +61,13 @@
           "pv_production_entity": "PV Produktion Sensor (kWh)",
           "grid_export_entity": "Netzeinspeisung Sensor (kWh)",
           "grid_import_entity": "Netzbezug Sensor (kWh)",
-          "consumption_entity": "Hausverbrauch Sensor (kWh)",
-          "epex_price_entity": "EPEX Spot Preis Sensor (optional)"
+          "consumption_entity": "Hausverbrauch Sensor (kWh)"
         },
         "data_description": {
           "pv_production_entity": "Gesamt-kWh Zähler der PV-Anlage",
           "grid_export_entity": "Gesamt-kWh Zähler Netzeinspeisung",
           "grid_import_entity": "Gesamt-kWh Zähler Netzbezug",
-          "consumption_entity": "Gesamt-kWh Zähler Hausverbrauch",
-          "epex_price_entity": "Optional: Für Vergleich Fixpreis vs. Spot-Tarif (aWATTar, smartENERGY, etc.)"
+          "consumption_entity": "Gesamt-kWh Zähler Hausverbrauch"
         }
       },
       "prices": {
@@ -76,6 +76,7 @@
         "data": {
           "fixed_price": "Arbeitspreis netto (ct/kWh)",
           "markup_factor": "Aufschlagfaktor",
+          "electricity_price_entity": "Dynamischer Strompreis Sensor",
           "feed_in_tariff_unit": "Einspeisevergütung-Einheit",
           "feed_in_tariff": "Einspeisevergütung",
           "feed_in_tariff_entity": "Dynamische Einspeisevergütung Sensor",
@@ -85,6 +86,7 @@
         "data_description": {
           "fixed_price": "Arbeitspreis netto vom Anbieter (ohne Netzgebühren/Steuern)",
           "markup_factor": "Faktor für Netz, Steuern, MwSt (Standard: 2.0). Brutto = Netto × Faktor",
+          "electricity_price_entity": "Optional: Sensor für dynamischen Strompreis (überschreibt den statischen Arbeitspreis). Wert wird automatisch erkannt (ct oder EUR).",
           "feed_in_tariff_unit": "Euro oder Cent pro kWh",
           "feed_in_tariff": "Einspeisevergütung vom Netzbetreiber",
           "feed_in_tariff_entity": "Optional: Sensor für dynamische Vergütung",
