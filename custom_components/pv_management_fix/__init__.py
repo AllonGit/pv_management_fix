@@ -602,26 +602,22 @@ class PVManagementFixController:
 
     @property
     def roi_percent(self) -> float | None:
-        """Return on Investment in % (erst nach Amortisation)."""
+        """Return on Investment in % (negativ vor, positiv nach Amortisation)."""
         if self.installation_cost <= 0:
-            return None
-        if self.total_savings < self.installation_cost:
             return None
         return ((self.total_savings - self.installation_cost) / self.installation_cost) * 100
 
     @property
     def annual_roi_percent(self) -> float | None:
         """Jährlicher ROI in %."""
-        roi = self.roi_percent
-        if roi is None:
+        if self.installation_cost <= 0:
             return None
         days = self.days_since_installation
         if days <= 0:
             return None
         years = days / 365.0
-        if years <= 0:
-            return None
-        return roi / years
+        annual_savings = self.total_savings / years
+        return ((annual_savings - (self.installation_cost / years)) / self.installation_cost) * 100
 
     @property
     def days_since_installation(self) -> int:
