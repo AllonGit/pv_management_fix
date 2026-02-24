@@ -3,120 +3,160 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/hoizi89/pv_management_fix)](https://github.com/hoizi89/pv_management_fix/releases)
 
-Home Assistant integration for **fixed-price electricity tariffs** (e.g. Gruenwelt classic, Energie AG).
+Home Assistant Integration für **Fixpreis-Stromtarife** (z.B. Grünwelt classic, Energie AG).
 
-Calculates the amortization of your PV system and optionally compares with spot prices.
+Berechnet die Amortisation deiner PV-Anlage, trackt Batterie-Effizienz und überwacht dein Stromkontingent.
 
 ## Features
 
-- **Amortization calculation** - How much of your PV system is already paid off?
-- **Energy tracking** - Self-consumption and feed-in (incremental, persistent)
-- **Helper sync** - Saves values to input_number for maximum persistence
-- **Savings statistics** - Per day, month, year + forecast
-- **Spot comparison** (optional) - Would spot pricing have been cheaper than your fixed price?
-- **Electricity quota** - Yearly kWh budget tracking for fixed-price tariffs
-- **Event notifications** - Automatic events for milestones, quota warnings, monthly summaries
+- **Amortisationsberechnung** — Wie viel deiner PV-Anlage ist abbezahlt?
+- **Energie-Tracking** — Eigenverbrauch und Einspeisung (inkrementell, persistent)
+- **Batterie-Tracking** — Ladestand, Effizienz, Zyklen, Ladung/Entladung
+- **ROI-Berechnung** — Return on Investment nach Amortisation
+- **Stromkontingent** — Jahres-kWh-Budget mit saisonaler Gewichtung
+- **Tägliche Stromkosten** — Netzbezug, Einspeisung, Netto-Kosten pro Tag
+- **Helper-Sync** — Speichert Werte in input_number für maximale Persistenz
+- **Event-Benachrichtigungen** — Meilensteine, Kontingent-Warnungen, Monatszusammenfassungen
 
 ## Installation
 
-### HACS (recommended)
+### HACS (empfohlen)
 
-1. Open HACS > Integrations > 3-dot menu > **Custom repositories**
-2. Enter URL: `https://github.com/hoizi89/pv_management_fix`
-3. Category: **Integration**
-4. Search for the integration and install
-5. **Restart** Home Assistant
+1. HACS öffnen > Integrationen > 3-Punkt-Menü > **Benutzerdefinierte Repositories**
+2. URL eingeben: `https://github.com/hoizi89/pv_management_fix`
+3. Kategorie: **Integration**
+4. Integration suchen und installieren
+5. Home Assistant **neustarten**
 
-### Manual
+### Manuell
 
-1. Copy `custom_components/pv_management_fix` folder to `config/custom_components/`
-2. Restart Home Assistant
+1. `custom_components/pv_management_fix` Ordner nach `config/custom_components/` kopieren
+2. Home Assistant neustarten
 
-## Configuration
+## Konfiguration
 
-1. Settings > Devices & Services > **Add Integration**
-2. Search for "PV Management Fixpreis"
-3. Select sensors:
-   - **PV Production** (required) - kWh counter
-   - **Grid Export** (optional) - for feed-in earnings
-   - **Grid Import** (optional) - for spot comparison & electricity quota
-4. Enter your **fixed price** (default: 10.92 ct/kWh)
-5. Enter **installation cost**
+1. Einstellungen > Geräte & Dienste > **Integration hinzufügen**
+2. "PV Management Fixpreis" suchen
+3. Sensoren auswählen:
+   - **PV Produktion** (Pflicht) — kWh-Zähler
+   - **Netzeinspeisung** (optional) — für Einnahmenberechnung
+   - **Netzbezug** (optional) — für Stromkontingent & Kostentracking
+   - **Hausverbrauch** (optional) — für Autarkiegrad
+4. **Fixpreis** eingeben (Standard: 10.92 ct/kWh netto)
+5. **Aufschlagfaktor** (Standard: 2.0 → 10ct netto wird 20ct brutto)
+6. **Anschaffungskosten** eingeben
+7. **Amortisation Helper** auswählen (input_number Entity)
 
-## Sensors
+## Sensoren
 
-| Sensor | Description |
-|--------|-------------|
-| Amortisation | Percentage of system paid off |
-| Gesamtersparnis | Total savings in EUR |
-| Restbetrag | Remaining EUR until full amortization |
-| Status | Text ("45% amortisiert" / "Amortisiert! +500 EUR") |
-| Restlaufzeit | Days until amortization (forecast) |
-| Amortisationsdatum | Estimated payback date |
-| Eigenverbrauch | kWh self-consumed |
-| Einspeisung | kWh fed into grid |
-| Eigenverbrauchsquote | % of PV production self-consumed |
-| Autarkiegrad | % of consumption covered by PV |
-| Ersparnis pro Tag/Monat/Jahr | Average savings |
-| CO2 Ersparnis | kg CO2 saved |
-| Fixpreis vs Spot | EUR saved vs. spot tariff (optional) |
-| **Strompreis Brutto** | Gross price in EUR/kWh (for Energy Dashboard) |
+### Haupt-Device: PV Fixpreis
 
-### Energy Dashboard Integration
+| Sensor | Beschreibung | Einheit |
+|--------|-------------|---------|
+| Amortisation | Prozent der Anlage abbezahlt | % |
+| Gesamtersparnis | Gesamte Ersparnis | € |
+| Restbetrag | Verbleibend bis Amortisation | € |
+| Status | Text-Zusammenfassung | — |
+| Restlaufzeit | Geschätzte Tage bis Amortisation | Tage |
+| Amortisationsdatum | Geschätztes Datum | Datum |
+| Eigenverbrauch | Selbst verbrauchte kWh | kWh |
+| Einspeisung | Ins Netz eingespeiste kWh | kWh |
+| Eigenverbrauchsquote | Anteil PV der selbst verbraucht wird | % |
+| Autarkiegrad | Anteil Verbrauch durch PV gedeckt | % |
+| Ersparnis pro Tag/Monat/Jahr | Durchschnittliche Ersparnis | €/Zeitraum |
+| CO2 Ersparnis | Eingesparte Emissionen | kg |
+| **ROI** | Return on Investment (nach Amortisation) | % |
+| **ROI pro Jahr** | Jährlicher ROI | %/Jahr |
+| Strompreis Brutto | Für Energy Dashboard | EUR/kWh |
 
-Use `sensor.pv_fixpreis_strompreis_brutto` as electricity price entity in the Home Assistant Energy Dashboard. The sensor outputs the calculated gross price in `EUR/kWh` format.
+### Device: Strompreise
 
-### Electricity Quota Sensors (v1.1.0)
+| Sensor | Beschreibung | Einheit |
+|--------|-------------|---------|
+| Einspeisung Heute | Tägliche Einspeisevergütung | € |
+| Netzbezug Heute | Tägliche Netzbezugskosten | € |
+| Stromkosten Netto Heute | Netzbezug minus Einspeisung | € |
 
-When enabled, these sensors appear under a separate "Stromkontingent" device:
+### Device: Batterie (optional)
 
-| Sensor | Description |
-|--------|-------------|
-| Kontingent Verbleibend | Remaining kWh in yearly quota |
-| Kontingent Verbrauch | Percentage of yearly quota consumed |
-| Kontingent Reserve | kWh ahead/behind linear budget (positive = good) |
-| Kontingent Tagesbudget | Daily kWh budget for remaining period |
-| Kontingent Prognose | Projected yearly consumption at current rate |
-| Kontingent Restlaufzeit | Days remaining in tariff period |
-| Kontingent Status | Text summary ("Im Budget (+180 kWh)" or "Ueber Budget (-50 kWh)") |
+Erscheint nur wenn mindestens ein Batterie-Sensor konfiguriert ist.
 
-## Options (changeable after setup)
+| Sensor | Beschreibung | Einheit |
+|--------|-------------|---------|
+| Batterie Ladestand | SOC mit dynamischem Icon | % |
+| Batterie Ladung Gesamt | Gesamt ins Batterie geladen | kWh |
+| Batterie Entladung Gesamt | Gesamt aus Batterie entladen | kWh |
+| Batterie Effizienz | Entladung / Ladung × 100 | % |
+| Batterie Zyklen | Geschätzt: Ladung / Kapazität | Zyklen |
 
-### Sensors
-- PV Production, Grid Export, Grid Import, Consumption
-- EPEX Spot Price (optional, for comparison)
+> **Beispiel:** 4868 kWh geladen, 3820 kWh entladen → **78.5% Effizienz**, **371 Zyklen** (bei 13.1 kWh Kapazität)
 
-### Electricity Prices & Amortization
-- **Energy price net** (ct/kWh) - your tariff's energy component
-- **Markup factor** (default: 2.0) - multiplier for grid fees, taxes, VAT
-- **Feed-in tariff** (EUR/kWh or ct/kWh)
-- **Installation cost** (EUR)
-- **Installation date**
+### Device: Stromkontingent (optional)
 
-> **Example:** Net price 10.92 ct × factor 2.0 = 21.84 ct gross (used for savings)
+Erscheint nur wenn das Kontingent aktiviert ist.
 
-### Historical Data
-- Already amortized amount (EUR)
-- Self-consumption / export before tracking (kWh)
+| Sensor | Beschreibung | Einheit |
+|--------|-------------|---------|
+| Kontingent Verbleibend | Verbleibende kWh im Jahresbudget | kWh |
+| Kontingent Verbrauch | Prozent des Kontingents verbraucht | % |
+| Kontingent Reserve | Über/unter Budget (positiv = gut) | kWh |
+| Kontingent Tagesbudget | Erlaubter Tagesverbrauch für Restperiode | kWh/Tag |
+| Kontingent Prognose | Hochrechnung Jahresverbrauch | kWh |
+| Kontingent Restlaufzeit | Verbleibende Tage in der Periode | Tage |
+| Kontingent Status | Text-Zusammenfassung | — |
 
-### Electricity Quota
-- **Enable/disable** quota tracking
-- **Yearly quota** in kWh (e.g. 4000)
-- **Period start date** (from your invoice, doesn't have to be Jan 1)
-- **Meter reading at start** (grid import counter at period start)
-- **Monthly payment** (optional, display only)
+## Options (nach Setup änderbar)
 
-## Dashboard Example
+### Sensoren
+- PV Produktion, Netzeinspeisung, Netzbezug, Hausverbrauch
+
+### Strompreise & Amortisation
+- **Fixpreis netto** (ct/kWh) — Arbeitspreis vom Anbieter
+- **Aufschlagfaktor** (Standard: 2.0) — Netto × Faktor = Brutto
+- **Strompreis per Sensor** (optional) — überschreibt den statischen Fixpreis
+- **Einspeisevergütung** (€/kWh oder ct/kWh, statisch oder per Sensor)
+- **Anschaffungskosten** und **Installationsdatum**
+
+> **Beispiel:** Netto 10.92 ct × Faktor 2.0 = **21.84 ct brutto** (wird für Ersparnisberechnung verwendet)
+
+### Batterie
+- **Ladestand Sensor** (SOC) — z.B. `sensor.battery_state_of_charge`
+- **Ladung Gesamt Sensor** — z.B. `sensor.total_battery_charge`
+- **Entladung Gesamt Sensor** — z.B. `sensor.total_battery_discharge`
+- **Kapazität** in kWh (z.B. 13.1)
+
+### Amortisation Helper
+- **input_number Entity** — Speichert die Gesamtersparnis persistent
+- **Von Helper wiederherstellen** — Startwert beim nächsten Start laden
+
+### Historische Daten
+- Bereits amortisierter Betrag (€)
+- Eigenverbrauch / Einspeisung vor Tracking (kWh)
+
+### Stromkontingent
+- **Aktivieren/Deaktivieren** — Sensoren erscheinen automatisch (kein Neustart nötig)
+- **Jahres-Kontingent** in kWh (z.B. 4000)
+- **Startdatum** der Tarifperiode
+- **Zählerstand** am Startdatum (Netzbezug)
+- **Monatlicher Abschlag** (optional, nur Anzeige)
+- **Saisonale Berechnung** — Berücksichtigt Winter-/Sommer-Verbrauchsmuster
+
+## Energy Dashboard
+
+Verwende `sensor.pv_fixpreis_strompreis_brutto` als Strompreis-Entity im Home Assistant Energy Dashboard. Der Sensor gibt den Brutto-Preis in `EUR/kWh` aus.
+
+## Dashboard Beispiel
 
 ```yaml
 type: entities
-title: PV Fixed Price
+title: PV Fixpreis
 entities:
   - entity: sensor.pv_fixpreis_status
   - entity: sensor.pv_fixpreis_amortisation
   - entity: sensor.pv_fixpreis_gesamtersparnis
   - entity: sensor.pv_fixpreis_restbetrag
   - entity: sensor.pv_fixpreis_restlaufzeit
+  - entity: sensor.pv_fixpreis_roi
   - type: divider
   - entity: sensor.pv_fixpreis_eigenverbrauch
   - entity: sensor.pv_fixpreis_einspeisung
@@ -126,11 +166,24 @@ entities:
   - entity: sensor.pv_fixpreis_co2_ersparnis
 ```
 
-### Electricity Quota Dashboard
+### Batterie Dashboard
 
 ```yaml
 type: entities
-title: Electricity Quota
+title: Batterie
+entities:
+  - entity: sensor.pv_fixpreis_batterie_ladestand
+  - entity: sensor.pv_fixpreis_batterie_effizienz
+  - entity: sensor.pv_fixpreis_batterie_zyklen
+  - entity: sensor.pv_fixpreis_batterie_ladung_gesamt
+  - entity: sensor.pv_fixpreis_batterie_entladung_gesamt
+```
+
+### Stromkontingent Dashboard
+
+```yaml
+type: entities
+title: Stromkontingent
 entities:
   - entity: sensor.pv_fixpreis_kontingent_status
   - entity: sensor.pv_fixpreis_kontingent_verbleibend
@@ -141,69 +194,58 @@ entities:
   - entity: sensor.pv_fixpreis_kontingent_restlaufzeit
 ```
 
-## Difference to pv_management
+### Tägliche Stromkosten
 
-This integration is optimized for **fixed-price tariffs**.
+```yaml
+type: entities
+title: Stromkosten Heute
+entities:
+  - entity: sensor.pv_fixpreis_netzbezug_heute
+  - entity: sensor.pv_fixpreis_einspeisung_heute
+  - entity: sensor.pv_fixpreis_stromkosten_netto_heute
+```
 
-For **spot tariffs** (aWATTar, smartENERGY) with battery management use:
-[pv_management](https://github.com/hoizi89/pv_management)
+## Events (Benachrichtigungen)
 
-| Feature | pv_management | pv_management_fix |
-|---------|--------------|-------------------|
-| Amortization | Yes | Yes |
-| Energy Tracking | Yes | Yes |
-| Electricity Quota | No | Yes |
-| Recommendation Signal | Yes | No |
-| Auto-Charge | Yes | No |
-| Discharge Control | Yes | No |
-| EPEX Quantile | Yes | No |
-| Solcast | Yes | No |
-| Spot Comparison | Yes | Yes (optional) |
+Die Integration feuert `pv_management_event` Events für eigene Automationen:
 
-## Events (Notifications)
-
-The integration fires `pv_management_event` events for your own automations:
-
-### Milestone Events
+### Meilenstein-Events (25%, 50%, 75%, 100%)
 ```yaml
 event_type: pv_management_event
 event_data:
-  type: "amortisation_milestone"  # or "amortisation_complete"
-  milestone: 50  # 25, 50, 75, 100
+  type: "amortisation_milestone"
+  milestone: 50
   total_savings: 3500.00
   remaining: 3500.00
-  installation_cost: 7000.00
-  message: "50% amortized!"
+  message: "50% der PV-Anlage amortisiert!"
 ```
 
-### Quota Warnings
+### Kontingent-Warnungen (80%, 100%, über Budget)
 ```yaml
 event_type: pv_management_event
 event_data:
-  type: "quota_warning_80"  # or "quota_warning_100", "quota_over_budget"
+  type: "quota_warning_80"
   consumed_percent: 80.5
   remaining_kwh: 780
-  reserve_kwh: -50
-  message: "80% of electricity quota consumed!"
+  message: "80% des Stromkontingents verbraucht!"
 ```
 
-### Monthly Summary
+### Monatliche Zusammenfassung
 ```yaml
 event_type: pv_management_event
 event_data:
   type: "monthly_summary"
-  month: "January 2025"
+  month: "Januar 2025"
   grid_import_kwh: 180.5
   grid_import_cost: 32.50
   amortisation_percent: 52.3
-  total_savings: 3661.00
-  message: "PV report January 2025: 180 kWh grid import, 52.3% amortized"
+  message: "PV-Bericht Januar 2025: 180 kWh Netzbezug, 52.3% amortisiert"
 ```
 
-### Example Automation
+### Beispiel-Automation
 
 ```yaml
-alias: "PV Milestone Notification"
+alias: "PV Meilenstein Benachrichtigung"
 trigger:
   - platform: event
     event_type: pv_management_event
@@ -212,49 +254,71 @@ trigger:
 action:
   - service: notify.mobile_app
     data:
-      title: "PV Milestone reached!"
+      title: "PV Meilenstein erreicht!"
       message: "{{ trigger.event.data.message }}"
 ```
 
+## Unterschied zu pv_management
+
+Diese Integration ist optimiert für **Fixpreis-Tarife**.
+
+Für **Spot-Tarife** (aWATTar, smartENERGY) mit Batterie-Management:
+[pv_management](https://github.com/hoizi89/pv_management)
+
+| Feature | pv_management | pv_management_fix |
+|---------|--------------|-------------------|
+| Amortisation | Ja | Ja |
+| Energie-Tracking | Ja | Ja |
+| Batterie-Tracking | Nein | Ja |
+| ROI-Berechnung | Nein | Ja |
+| Stromkontingent | Nein | Ja |
+| Tägliche Stromkosten | Nein | Ja |
+| Empfehlungssignal | Ja | Nein |
+| Auto-Charge | Ja | Nein |
+| Entlade-Steuerung | Ja | Nein |
+| EPEX Quantil | Ja | Nein |
+| Solcast | Ja | Nein |
+
 ## Changelog
 
+### v1.8.1
+- **Fix:** `remaining_amount` → `remaining_cost` (Crash bei Meilensteinen)
+- **Fix:** Fehlende "Helper" Menu-Translation
+
+### v1.8.0
+- **NEU: Batterie-Tracking** — Eigenes Device mit 5 Sensoren (SOC, Ladung, Entladung, Effizienz, Zyklen)
+- **NEU: ROI-Sensoren** — Return on Investment und jährlicher ROI
+- **Fix: Quota-Sensoren** erscheinen ohne HA-Neustart wenn nachträglich aktiviert
+- Options-Menü: neuer "Batterie" Bereich
+
+### v1.7.1
+- Batterie-kompatible Eigenverbrauch- und Autarkiegrad-Berechnung
+- Verbesserte Preis-Config Labels
+
 ### v1.5.0
-- **NEW: Markup Factor** - Enter net price + factor for automatic gross calculation
-- **NEW: Energy Dashboard Sensor** - `EUR/kWh` sensor for HA Energy Dashboard
-- Improved savings calculations using gross price
-- Better spot vs. fixed comparison
+- **NEU: Aufschlagfaktor** — Netto-Preis + Faktor für automatische Brutto-Berechnung
+- **NEU: Energy Dashboard Sensor** — `EUR/kWh` Sensor für HA Energy Dashboard
 
 ### v1.4.0
-- **NEW: Helper-Sync** - Required input_number for persistent savings storage
-- **NEW: Milestone events** - Automatic events at 25%, 50%, 75%, 100% amortization
-- **NEW: Quota warnings** - Events at 80%, 100% consumption and over-budget
-- **NEW: Monthly summary** - Event on 1st of month with statistics
-
-### v1.3.0
-- Helper-Sync prepared (base integration)
-- Quota tracking improvements
-
-### v1.2.0
-- Improved quota calculations
-- Better seasonal factors
+- **NEU: Helper-Sync** — input_number für persistente Ersparnisspeicherung
+- **NEU: Meilenstein-Events** — Automatische Events bei 25%, 50%, 75%, 100%
+- **NEU: Kontingent-Warnungen** — Events bei 80%, 100% und über Budget
+- **NEU: Monatliche Zusammenfassung**
 
 ### v1.1.0
-- New: Electricity quota (Stromkontingent) - yearly kWh budget tracking
-- 7 new sensors: remaining, consumed %, reserve, daily budget, forecast, days remaining, status
-- New options page for quota configuration
-- Translations DE/EN
+- **NEU: Stromkontingent** — Jahres-kWh-Budget Tracking
+- 7 neue Sensoren für Kontingent-Überwachung
 
 ### v1.0.0
-- Initial release
-- Amortization calculation with fixed price
-- Energy tracking (self-consumption, feed-in)
-- Savings statistics (day/month/year)
-- Optional: Spot comparison with EPEX
+- Erstveröffentlichung
+- Amortisationsberechnung mit Fixpreis
+- Energie-Tracking (Eigenverbrauch, Einspeisung)
+- Ersparnisstatistiken (Tag/Monat/Jahr)
 
 ## Support
 
-[Report issues](https://github.com/hoizi89/pv_management_fix/issues)
+[Fehler melden](https://github.com/hoizi89/pv_management_fix/issues)
 
-## License
+## Lizenz
 
-MIT License - see [LICENSE](LICENSE)
+MIT License — siehe [LICENSE](LICENSE)
