@@ -53,6 +53,13 @@ CONF_QUOTA_START_METER: Final[str] = "quota_start_meter"
 CONF_QUOTA_MONTHLY_RATE: Final[str] = "quota_monthly_rate"
 CONF_QUOTA_SEASONAL: Final[str] = "quota_seasonal"
 
+# --- Batterie -----------------------------------------------------------------
+CONF_BATTERY_SOC_ENTITY: Final[str] = "battery_soc_entity"
+CONF_BATTERY_CHARGE_ENTITY: Final[str] = "battery_charge_entity"
+CONF_BATTERY_DISCHARGE_ENTITY: Final[str] = "battery_discharge_entity"
+CONF_BATTERY_CAPACITY: Final[str] = "battery_capacity"
+DEFAULT_BATTERY_CAPACITY: Final[float] = 10.0  # kWh
+
 # --- Defaults -----------------------------------------------------------------
 DEFAULT_NAME: Final[str] = "PV Fixpreis"
 DEFAULT_ELECTRICITY_PRICE: Final[float] = 0.1092  # €/kWh (Grünwelt classic)
@@ -106,3 +113,4 @@ RANGE_MARKUP_FACTOR: Final[dict] = {"min": 1.0, "max": 5.0, "step": 0.1}
 RANGE_QUOTA_KWH: Final[dict] = {"min": 100.0, "max": 100000.0, "step": 1.0}
 RANGE_QUOTA_METER: Final[dict] = {"min": 0.0, "max": 9999999.0, "step": 0.01}
 RANGE_QUOTA_RATE: Final[dict] = {"min": 0.0, "max": 10000.0, "step": 0.01}
+RANGE_BATTERY_CAPACITY: Final[dict] = {"min": 0.1, "max": 200.0, "step": 0.1}

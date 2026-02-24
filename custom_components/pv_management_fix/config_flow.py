@@ -16,6 +16,9 @@ from .const import (
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
+    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY,
+    CONF_BATTERY_DISCHARGE_ENTITY, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY,
+    RANGE_BATTERY_CAPACITY,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET, DEFAULT_FIXED_PRICE, DEFAULT_MARKUP_FACTOR,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -153,6 +156,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                 "helper": "Amortisation Helper",
                 "offsets": "Historische Daten",
                 "quota": "Stromkontingent",
+                "battery": "Batterie",
                 "save": "Speichern & Schließen",
             },
         )
@@ -161,7 +165,8 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
         """Speichert die Options und zeigt das Menü wieder an."""
         # Optionale Entity-Keys: wenn nicht im Input, explizit auf None setzen
         # damit ein entfernter Sensor auch wirklich gelöscht wird
-        for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY):
+        for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY,
+                    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY):
             if key not in user_input and key in self.config_entry.options:
                 user_input[key] = None
 
@@ -359,6 +364,33 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Required(CONF_QUOTA_SEASONAL, default=self._get_val(CONF_QUOTA_SEASONAL, DEFAULT_QUOTA_SEASONAL)):
                     selector.BooleanSelector(),
+            })
+        )
+
+    async def async_step_battery(self, user_input=None):
+        """Batterie-Speicher konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="battery",
+            data_schema=vol.Schema({
+                self._optional_entity(CONF_BATTERY_SOC_ENTITY):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                self._optional_entity(CONF_BATTERY_CHARGE_ENTITY):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                self._optional_entity(CONF_BATTERY_DISCHARGE_ENTITY):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Required(CONF_BATTERY_CAPACITY, default=self._get_val(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_BATTERY_CAPACITY["min"],
+                            max=RANGE_BATTERY_CAPACITY["max"],
+                            step=RANGE_BATTERY_CAPACITY["step"],
+                            unit_of_measurement="kWh",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
             })
         )
 

@@ -51,6 +51,7 @@
           "prices": "Electricity Prices & Amortization",
           "offsets": "Historical Data",
           "quota": "Electricity Quota",
+          "battery": "Battery",
           "save": "Save & Close"
         }
       },
@@ -126,6 +127,22 @@
           "quota_start_meter": "Grid import meter reading at start date (read from invoice/meter)",
           "quota_monthly_rate": "Optional: Monthly payment in EUR (display only)",
           "quota_seasonal": "Accounts for seasonal consumption patterns (more in winter, less in summer) for more realistic reserve and forecast values"
+        }
+      },
+      "battery": {
+        "title": "Battery Storage",
+        "description": "Configure battery storage sensors.",
+        "data": {
+          "battery_soc_entity": "State of Charge Sensor (SOC)",
+          "battery_charge_entity": "Total Charge Sensor (kWh)",
+          "battery_discharge_entity": "Total Discharge Sensor (kWh)",
+          "battery_capacity": "Battery Capacity (kWh)"
+        },
+        "data_description": {
+          "battery_soc_entity": "Sensor for battery state of charge in percent (e.g. sensor.battery_state_of_charge)",
+          "battery_charge_entity": "Sensor for total battery charge in kWh (e.g. sensor.total_battery_charge)",
+          "battery_discharge_entity": "Sensor for total battery discharge in kWh (e.g. sensor.total_battery_discharge)",
+          "battery_capacity": "Usable capacity of battery storage in kWh"
         }
       },
       "save": {

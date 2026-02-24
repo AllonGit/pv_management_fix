@@ -22,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 DEVICE_MAIN = "main"
 DEVICE_PRICES = "prices"
 DEVICE_QUOTA = "quota"
+DEVICE_BATTERY = "battery"
 
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
@@ -40,6 +41,14 @@ def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
             name=f"{name} Stromkontingent",
             manufacturer="Custom",
             model="PV Management Fixpreis - Stromkontingent",
+            via_device=(DOMAIN, name),
+        )
+    elif device_type == DEVICE_BATTERY:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_battery")},
+            name=f"{name} Batterie",
+            manufacturer="Custom",
+            model="PV Management Fixpreis - Batterie",
             via_device=(DOMAIN, name),
         )
     else:  # DEVICE_MAIN
@@ -99,6 +108,9 @@ async def async_setup_entry(
         DailyGridImportSensor(ctrl, name),
         DailyNetElectricityCostSensor(ctrl, name),
 
+        # === ROI ===
+        ROISensor(ctrl, name),
+        AnnualROISensor(ctrl, name),
     ]
 
     # === STROMKONTINGENT (nur wenn aktiviert) ===
@@ -111,6 +123,16 @@ async def async_setup_entry(
             QuotaForecastSensor(ctrl, name),
             QuotaDaysRemainingSensor(ctrl, name),
             QuotaStatusSensor(ctrl, name),
+        ])
+
+    # === BATTERIE (nur wenn mindestens ein Entity konfiguriert) ===
+    if ctrl.battery_soc_entity or ctrl.battery_charge_entity or ctrl.battery_discharge_entity:
+        entities.extend([
+            BatterySOCSensor(ctrl, name),
+            BatteryChargeTotalSensor(ctrl, name),
+            BatteryDischargeTotalSensor(ctrl, name),
+            BatteryEfficiencySensor(ctrl, name),
+            BatteryCyclesSensor(ctrl, name),
         ])
 
     async_add_entities(entities)
@@ -1134,3 +1156,209 @@ class QuotaStatusSensor(BaseEntity):
         if self.ctrl.quota_monthly_rate > 0:
             attrs["monatlicher_abschlag_eur"] = self.ctrl.quota_monthly_rate
         return attrs
+
+
+# =============================================================================
+# BATTERIE-SENSOREN
+# =============================================================================
+
+
+class BatterySOCSensor(BaseEntity):
+    """Batterie Ladestand."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Batterie Ladestand",
+            unit="%",
+            icon="mdi:battery-50",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        soc = self.ctrl.battery_soc
+        if soc is None:
+            return None
+        return round(soc, 1)
+
+    @property
+    def icon(self) -> str:
+        soc = self.ctrl.battery_soc
+        if soc is None:
+            return "mdi:battery-unknown"
+        if soc >= 95:
+            return "mdi:battery"
+        elif soc >= 85:
+            return "mdi:battery-90"
+        elif soc >= 75:
+            return "mdi:battery-80"
+        elif soc >= 65:
+            return "mdi:battery-70"
+        elif soc >= 55:
+            return "mdi:battery-60"
+        elif soc >= 45:
+            return "mdi:battery-50"
+        elif soc >= 35:
+            return "mdi:battery-40"
+        elif soc >= 25:
+            return "mdi:battery-30"
+        elif soc >= 15:
+            return "mdi:battery-20"
+        elif soc >= 5:
+            return "mdi:battery-10"
+        else:
+            return "mdi:battery-outline"
+
+
+class BatteryChargeTotalSensor(BaseEntity):
+    """Batterie Ladung Gesamt."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Batterie Ladung Gesamt",
+            unit="kWh",
+            icon="mdi:battery-charging",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+            device_class=SensorDeviceClass.ENERGY,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.battery_charge_total
+        if val is None:
+            return None
+        return round(val, 2)
+
+
+class BatteryDischargeTotalSensor(BaseEntity):
+    """Batterie Entladung Gesamt."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Batterie Entladung Gesamt",
+            unit="kWh",
+            icon="mdi:battery-arrow-down",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+            device_class=SensorDeviceClass.ENERGY,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.battery_discharge_total
+        if val is None:
+            return None
+        return round(val, 2)
+
+
+class BatteryEfficiencySensor(BaseEntity):
+    """Batterie Effizienz."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Batterie Effizienz",
+            unit="%",
+            icon="mdi:battery-heart-variant",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.battery_efficiency
+        if val is None:
+            return None
+        return round(val, 1)
+
+
+class BatteryCyclesSensor(BaseEntity):
+    """Batterie Zyklen (geschätzt)."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Batterie Zyklen",
+            unit="Zyklen",
+            icon="mdi:battery-sync",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+            device_type=DEVICE_BATTERY,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.battery_cycles_estimate
+        if val is None:
+            return None
+        return round(val, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "kapazitaet_kwh": self.ctrl.battery_capacity,
+        }
+
+
+# =============================================================================
+# ROI-SENSOREN
+# =============================================================================
+
+
+class ROISensor(BaseEntity):
+    """Return on Investment."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "ROI",
+            unit="%",
+            icon="mdi:chart-line",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.roi_percent
+        if val is None:
+            return None
+        return round(val, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "amortisiert": self.ctrl.is_amortised,
+            "gesamtersparnis_eur": round(self.ctrl.total_savings, 2),
+            "anschaffungskosten_eur": round(self.ctrl.installation_cost, 2),
+        }
+
+
+class AnnualROISensor(BaseEntity):
+    """Jährlicher ROI."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "ROI pro Jahr",
+            unit="%/Jahr",
+            icon="mdi:chart-timeline-variant",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.annual_roi_percent
+        if val is None:
+            return None
+        return round(val, 2)

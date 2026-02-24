@@ -20,6 +20,8 @@ from .const import (
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
+    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY,
+    CONF_BATTERY_DISCHARGE_ENTITY, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -147,6 +149,12 @@ class PVManagementFixController:
         self.quota_start_meter = opts.get(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)
         self.quota_monthly_rate = opts.get(CONF_QUOTA_MONTHLY_RATE, DEFAULT_QUOTA_MONTHLY_RATE)
         self.quota_seasonal = opts.get(CONF_QUOTA_SEASONAL, DEFAULT_QUOTA_SEASONAL)
+
+        # Batterie
+        self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
+        self.battery_charge_entity = opts.get(CONF_BATTERY_CHARGE_ENTITY)
+        self.battery_discharge_entity = opts.get(CONF_BATTERY_DISCHARGE_ENTITY)
+        self.battery_capacity = opts.get(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)
 
         # Amortisation Helper (Pflicht für Persistenz)
         self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
@@ -542,6 +550,78 @@ class PVManagementFixController:
     def co2_saved_kg(self) -> float:
         """Eingesparte CO2-Emissionen in kg."""
         return self.self_consumption_kwh * CO2_FACTOR_GRID
+
+    # =========================================================================
+    # BATTERIE
+    # =========================================================================
+
+    @property
+    def battery_soc(self) -> float | None:
+        """Batterie-Ladestand in %."""
+        if not self.battery_soc_entity:
+            return None
+        val, ok = self._get_entity_value(self.battery_soc_entity)
+        return val if ok else None
+
+    @property
+    def battery_charge_total(self) -> float | None:
+        """Gesamt-Ladung in kWh."""
+        if not self.battery_charge_entity:
+            return None
+        val, ok = self._get_entity_value(self.battery_charge_entity)
+        return val if ok else None
+
+    @property
+    def battery_discharge_total(self) -> float | None:
+        """Gesamt-Entladung in kWh."""
+        if not self.battery_discharge_entity:
+            return None
+        val, ok = self._get_entity_value(self.battery_discharge_entity)
+        return val if ok else None
+
+    @property
+    def battery_efficiency(self) -> float | None:
+        """Batterie-Effizienz in % (Entladung / Ladung × 100)."""
+        charge = self.battery_charge_total
+        discharge = self.battery_discharge_total
+        if charge is None or discharge is None or charge <= 0:
+            return None
+        return (discharge / charge) * 100
+
+    @property
+    def battery_cycles_estimate(self) -> float | None:
+        """Geschätzte Zyklen (Gesamt-Ladung / Kapazität)."""
+        charge = self.battery_charge_total
+        if charge is None or self.battery_capacity <= 0:
+            return None
+        return charge / self.battery_capacity
+
+    # =========================================================================
+    # ROI
+    # =========================================================================
+
+    @property
+    def roi_percent(self) -> float | None:
+        """Return on Investment in % (erst nach Amortisation)."""
+        if self.installation_cost <= 0:
+            return None
+        if self.total_savings < self.installation_cost:
+            return None
+        return ((self.total_savings - self.installation_cost) / self.installation_cost) * 100
+
+    @property
+    def annual_roi_percent(self) -> float | None:
+        """Jährlicher ROI in %."""
+        roi = self.roi_percent
+        if roi is None:
+            return None
+        days = self.days_since_installation
+        if days <= 0:
+            return None
+        years = days / 365.0
+        if years <= 0:
+            return None
+        return roi / years
 
     @property
     def days_since_installation(self) -> int:
@@ -1070,6 +1150,8 @@ class PVManagementFixController:
             changed = True
         elif entity_id == self.consumption_entity:
             self._consumption_kwh = value
+        elif entity_id in (self.battery_soc_entity, self.battery_charge_entity, self.battery_discharge_entity):
+            self._notify_entities()
 
         if changed:
             self._process_energy_update()
@@ -1181,13 +1263,35 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handler für Options-Updates."""
+    """Handler für Options-Updates. Reload bei strukturellen Änderungen."""
     try:
         if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
             ctrl = hass.data[DOMAIN][entry.entry_id].get(DATA_CTRL)
             if ctrl:
-                ctrl._load_options()
-                ctrl._notify_entities()
-                _LOGGER.info("PV Management Fixpreis Optionen aktualisiert")
+                old_quota = ctrl.quota_enabled
+                old_batt_soc = ctrl.battery_soc_entity
+                old_batt_charge = ctrl.battery_charge_entity
+                old_batt_discharge = ctrl.battery_discharge_entity
+
+                opts = {**entry.data, **entry.options}
+                new_quota = opts.get(CONF_QUOTA_ENABLED, DEFAULT_QUOTA_ENABLED)
+                new_batt_soc = opts.get(CONF_BATTERY_SOC_ENTITY)
+                new_batt_charge = opts.get(CONF_BATTERY_CHARGE_ENTITY)
+                new_batt_discharge = opts.get(CONF_BATTERY_DISCHARGE_ENTITY)
+
+                needs_reload = (
+                    old_quota != new_quota
+                    or old_batt_soc != new_batt_soc
+                    or old_batt_charge != new_batt_charge
+                    or old_batt_discharge != new_batt_discharge
+                )
+
+                if needs_reload:
+                    _LOGGER.info("Strukturelle Änderung erkannt, Reload wird ausgeführt")
+                    await hass.config_entries.async_reload(entry.entry_id)
+                else:
+                    ctrl._load_options()
+                    ctrl._notify_entities()
+                    _LOGGER.info("PV Management Fixpreis Optionen aktualisiert")
     except Exception as e:
         _LOGGER.error("Fehler beim Aktualisieren der Optionen: %s", e)

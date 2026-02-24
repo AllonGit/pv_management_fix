@@ -51,6 +51,7 @@
           "prices": "Strompreise & Amortisation",
           "offsets": "Historische Daten",
           "quota": "Stromkontingent",
+          "battery": "Batterie",
           "save": "Speichern & Schliessen"
         }
       },
@@ -126,6 +127,22 @@
           "quota_start_meter": "Zaehlerstand Netzbezug am Startdatum (von Rechnung/Zaehler ablesen)",
           "quota_monthly_rate": "Optional: Monatlicher Abschlag in EUR (nur zur Anzeige)",
           "quota_seasonal": "Beruecksichtigt saisonale Verbrauchsmuster (Winter mehr, Sommer weniger) fuer realistischere Reserve- und Prognose-Werte"
+        }
+      },
+      "battery": {
+        "title": "Batterie-Speicher",
+        "description": "Konfiguriere die Batterie-Sensoren deines Speichers.",
+        "data": {
+          "battery_soc_entity": "Ladestand Sensor (SOC)",
+          "battery_charge_entity": "Ladung Gesamt Sensor (kWh)",
+          "battery_discharge_entity": "Entladung Gesamt Sensor (kWh)",
+          "battery_capacity": "Batteriekapazitaet (kWh)"
+        },
+        "data_description": {
+          "battery_soc_entity": "Sensor fuer den Batterie-Ladestand in Prozent (z.B. sensor.battery_state_of_charge)",
+          "battery_charge_entity": "Sensor fuer die gesamte Batterie-Ladung in kWh (z.B. sensor.total_battery_charge)",
+          "battery_discharge_entity": "Sensor fuer die gesamte Batterie-Entladung in kWh (z.B. sensor.total_battery_discharge)",
+          "battery_capacity": "Nutzbare Kapazitaet des Batteriespeichers in kWh"
         }
       },
       "save": {
