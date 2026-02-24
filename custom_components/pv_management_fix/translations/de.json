@@ -72,24 +72,24 @@
       },
       "prices": {
         "title": "Strompreise & Amortisation",
-        "description": "Konfiguriere deinen Fixpreis und die Einspeisevergütung.",
+        "description": "Strompreis = was du für Netzbezug zahlst. Einspeisevergütung = was du für Einspeisung bekommst. Beide können optional per Sensor dynamisch sein.",
         "data": {
-          "fixed_price": "Arbeitspreis netto (ct/kWh)",
-          "markup_factor": "Aufschlagfaktor",
-          "electricity_price_entity": "Dynamischer Strompreis Sensor",
+          "fixed_price": "Strompreis netto (ct/kWh) — Fallback",
+          "markup_factor": "Aufschlagfaktor (Netz + Steuern + MwSt)",
+          "electricity_price_entity": "Strompreis per Sensor (optional)",
           "feed_in_tariff_unit": "Einspeisevergütung-Einheit",
-          "feed_in_tariff": "Einspeisevergütung",
-          "feed_in_tariff_entity": "Dynamische Einspeisevergütung Sensor",
-          "installation_cost": "Anschaffungskosten",
+          "feed_in_tariff": "Einspeisevergütung — Fallback",
+          "feed_in_tariff_entity": "Einspeisevergütung per Sensor (optional)",
+          "installation_cost": "Anschaffungskosten PV-Anlage",
           "installation_date": "Installationsdatum"
         },
         "data_description": {
-          "fixed_price": "Arbeitspreis netto vom Anbieter (ohne Netzgebühren/Steuern)",
-          "markup_factor": "Faktor für Netz, Steuern, MwSt (Standard: 2.0). Brutto = Netto × Faktor",
-          "electricity_price_entity": "Optional: Sensor für dynamischen Strompreis (überschreibt den statischen Arbeitspreis). Wert wird automatisch erkannt (ct oder EUR).",
-          "feed_in_tariff_unit": "Euro oder Cent pro kWh",
-          "feed_in_tariff": "Einspeisevergütung vom Netzbetreiber",
-          "feed_in_tariff_entity": "Optional: Sensor für dynamische Vergütung",
+          "fixed_price": "Statischer Arbeitspreis netto. Wird nur verwendet wenn KEIN Sensor ausgewählt ist.",
+          "markup_factor": "Brutto = Netto × Faktor. Bei 2.0 wird z.B. 10ct netto zu 20ct brutto.",
+          "electricity_price_entity": "Sensor der den aktuellen Strompreis liefert (z.B. dynamischer Tarif). Überschreibt den statischen Wert oben. Einheit (ct/EUR) wird automatisch erkannt.",
+          "feed_in_tariff_unit": "Einheit für den statischen Fallback-Wert unten",
+          "feed_in_tariff": "Statische Einspeisevergütung. Wird nur verwendet wenn KEIN Sensor ausgewählt ist.",
+          "feed_in_tariff_entity": "Sensor der die aktuelle Einspeisevergütung liefert (z.B. OeMAG Marktpreis). Überschreibt den statischen Wert oben. Einheit (ct/EUR) wird automatisch erkannt.",
           "installation_cost": "Gesamtkosten der PV-Anlage (für Amortisationsrechnung)",
           "installation_date": "Für Statistiken und Prognosen"
         }
