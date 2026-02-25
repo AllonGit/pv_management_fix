@@ -29,20 +29,12 @@ DEVICE_PV_STRINGS = "pv_strings"
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
     """Erstellt DeviceInfo für verschiedene Geräte-Typen."""
-    if device_type == DEVICE_PRICES:
+    if device_type == DEVICE_PRICES or device_type == DEVICE_QUOTA:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{name}_prices")},
-            name=f"{name} Strompreise",
+            name=f"{name} Strom & Kosten",
             manufacturer="Custom",
-            model="PV Management Fixpreis - Strompreise",
-            via_device=(DOMAIN, name),
-        )
-    elif device_type == DEVICE_QUOTA:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{name}_quota")},
-            name=f"{name} Stromkontingent",
-            manufacturer="Custom",
-            model="PV Management Fixpreis - Stromkontingent",
+            model="PV Management Fixpreis - Strom & Kosten",
             via_device=(DOMAIN, name),
         )
     elif device_type == DEVICE_BATTERY:
