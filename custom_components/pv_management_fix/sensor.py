@@ -24,6 +24,7 @@ DEVICE_PRICES = "prices"
 DEVICE_QUOTA = "quota"
 DEVICE_BATTERY = "battery"
 DEVICE_BENCHMARK = "benchmark"
+DEVICE_PV_STRINGS = "pv_strings"
 
 
 def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
@@ -58,6 +59,14 @@ def get_device_info(name: str, device_type: str = DEVICE_MAIN) -> DeviceInfo:
             name=f"{name} Energie-Benchmark",
             manufacturer="Custom",
             model="PV Energy Management+ - Energie-Benchmark",
+            via_device=(DOMAIN, name),
+        )
+    elif device_type == DEVICE_PV_STRINGS:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{name}_pv_strings")},
+            name=f"{name} PV-Strings",
+            manufacturer="Custom",
+            model="PV Management Fixpreis - PV-Strings",
             via_device=(DOMAIN, name),
         )
     else:  # DEVICE_MAIN
@@ -161,6 +170,15 @@ async def async_setup_entry(
             BatteryCyclesSensor(ctrl, name),
         ])
 
+    # === PV-STRINGS (optional) ===
+    if ctrl.pv_strings:
+        for i, (string_name, string_entity) in enumerate(ctrl.pv_strings):
+            entities.extend([
+                PVStringSensor(ctrl, name, i, string_name, string_entity, "production"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, "daily"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, "percentage"),
+            ])
+
     async_add_entities(entities)
 
 
@@ -211,6 +229,44 @@ class BaseEntity(SensorEntity):
     def _on_ctrl_update(self):
         if not self._removed and self.hass:
             self.async_write_ha_state()
+
+
+class PVStringSensor(BaseEntity):
+    """Generischer Sensor für PV-String Vergleich."""
+
+    def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, sensor_type: str):
+        self._string_entity_id = entity_id
+        self._sensor_type = sensor_type
+
+        if sensor_type == "production":
+            key = f"{string_name} Produktion"
+            unit = "kWh"
+            icon = "mdi:solar-panel"
+            state_class = SensorStateClass.TOTAL_INCREASING
+        elif sensor_type == "daily":
+            key = f"{string_name} Tagesproduktion"
+            unit = "kWh/Tag"
+            icon = "mdi:weather-sunny"
+            state_class = SensorStateClass.MEASUREMENT
+        else:  # percentage
+            key = f"{string_name} Anteil"
+            unit = "%"
+            icon = "mdi:chart-pie"
+            state_class = SensorStateClass.MEASUREMENT
+
+        super().__init__(ctrl, name, key, unit=unit, icon=icon, state_class=state_class, device_type=DEVICE_PV_STRINGS)
+
+    @property
+    def native_value(self):
+        if self._sensor_type == "production":
+            val = self.ctrl.get_string_production_kwh(self._string_entity_id)
+            return round(val, 2) if val else 0.0
+        elif self._sensor_type == "daily":
+            val = self.ctrl.get_string_daily_kwh(self._string_entity_id)
+            return round(val, 2) if val is not None else None
+        else:  # percentage
+            val = self.ctrl.get_string_percentage(self._string_entity_id)
+            return round(val, 1) if val is not None else None
 
 
 # =============================================================================

@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_QUOTA_START_METER, DEFAULT_QUOTA_MONTHLY_RATE,
     DEFAULT_QUOTA_SEASONAL, SEASONAL_FACTORS,
     PRICE_UNIT_CENT,
+    PV_STRING_CONFIGS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,6 +118,11 @@ class PVManagementFixController:
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date: date | None = None
 
+        # PV-String Delta-Tracking
+        self._string_last_kwh: dict[str, float | None] = {}
+        self._string_tracked_kwh: dict[str, float] = {}
+        self._string_first_seen_date: date | None = None
+
         # Listener
         self._remove_listeners = []
         self._entity_listeners = []
@@ -176,6 +182,15 @@ class PVManagementFixController:
         self.benchmark_country = opts.get(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)
         self.benchmark_heatpump = opts.get(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)
         self.benchmark_heatpump_entity = opts.get(CONF_BENCHMARK_HEATPUMP_ENTITY)
+
+        # PV-Strings
+        self.pv_strings = []  # list of (name, entity_id)
+        for name_key, entity_key in PV_STRING_CONFIGS:
+            s_name = opts.get(name_key, "").strip()
+            s_entity = opts.get(entity_key)
+            if s_name and s_entity:
+                self.pv_strings.append((s_name, s_entity))
+        self._string_entity_ids = {e for _, e in self.pv_strings}
 
     @property
     def fixed_price_ct(self) -> float:
@@ -1085,6 +1100,16 @@ class PVManagementFixController:
             except (ValueError, TypeError):
                 pass
 
+        # PV-String Delta-Tracking wiederherstellen
+        raw = data.get("string_tracked_kwh", {})
+        self._string_tracked_kwh = {k: safe_float(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+        s_first = data.get("string_first_seen_date")
+        if s_first:
+            try:
+                self._string_first_seen_date = date.fromisoformat(s_first) if isinstance(s_first, str) else s_first
+            except (ValueError, TypeError):
+                pass
+
         self._restored = True
         _LOGGER.info(
             "PV Management Fixpreis restored: %.2f kWh self, %.2f kWh feed, %.2f€ savings",
@@ -1166,7 +1191,28 @@ class PVManagementFixController:
             "monthly_reset_year": today.year,
             "tracked_wp_kwh": self._tracked_wp_kwh,
             "wp_first_seen_date": self._wp_first_seen_date.isoformat() if self._wp_first_seen_date else None,
+            "string_tracked_kwh": self._string_tracked_kwh,
+            "string_first_seen_date": self._string_first_seen_date.isoformat() if self._string_first_seen_date else None,
         }
+
+    def get_string_production_kwh(self, entity_id: str) -> float:
+        """Gibt die getrackte Produktion eines PV-Strings zurück."""
+        return self._string_tracked_kwh.get(entity_id, 0.0)
+
+    def get_string_daily_kwh(self, entity_id: str) -> float | None:
+        """Gibt die durchschnittliche Tagesproduktion eines PV-Strings zurück."""
+        if not self._string_first_seen_date:
+            return None
+        days = max(1, (date.today() - self._string_first_seen_date).days)
+        tracked = self._string_tracked_kwh.get(entity_id, 0.0)
+        return tracked / days if tracked > 0 else None
+
+    def get_string_percentage(self, entity_id: str) -> float | None:
+        """Gibt den prozentualen Anteil eines PV-Strings an der Gesamtproduktion zurück."""
+        total = sum(self._string_tracked_kwh.values())
+        if total <= 0:
+            return None
+        return self._string_tracked_kwh.get(entity_id, 0.0) / total * 100
 
     def _process_energy_update(self) -> None:
         """Verarbeitet Energie-Updates INKREMENTELL."""
@@ -1298,6 +1344,18 @@ class PVManagementFixController:
             self._last_wp_kwh = value
             self._notify_entities()
 
+        # PV-Strings (Delta-Tracking)
+        elif entity_id in self._string_entity_ids:
+            if self._string_first_seen_date is None:
+                self._string_first_seen_date = date.today()
+            last = self._string_last_kwh.get(entity_id)
+            if last is not None and value >= last:
+                self._string_tracked_kwh[entity_id] = (
+                    self._string_tracked_kwh.get(entity_id, 0.0) + (value - last)
+                )
+            self._string_last_kwh[entity_id] = value
+            self._notify_entities()
+
         if changed:
             self._process_energy_update()
 
@@ -1332,6 +1390,17 @@ class PVManagementFixController:
                         self._wp_first_seen_date = date.today()
                 except (ValueError, TypeError):
                     pass
+
+        # PV-Strings initialisieren
+        for _, entity_id in self.pv_strings:
+            state = self.hass.states.get(entity_id)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._string_last_kwh[entity_id] = float(state.state)
+                except (ValueError, TypeError):
+                    pass
+        if self.pv_strings and self._string_first_seen_date is None:
+            self._string_first_seen_date = date.today()
 
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:

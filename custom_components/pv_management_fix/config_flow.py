@@ -33,6 +33,10 @@ from .const import (
     RANGE_COST, RANGE_OFFSET, RANGE_ENERGY_OFFSET, RANGE_MARKUP_FACTOR,
     RANGE_QUOTA_KWH, RANGE_QUOTA_METER, RANGE_QUOTA_RATE,
     PRICE_UNIT_EUR, PRICE_UNIT_CENT,
+    CONF_PV_STRING_1_NAME, CONF_PV_STRING_1_ENTITY,
+    CONF_PV_STRING_2_NAME, CONF_PV_STRING_2_ENTITY,
+    CONF_PV_STRING_3_NAME, CONF_PV_STRING_3_ENTITY,
+    CONF_PV_STRING_4_NAME, CONF_PV_STRING_4_ENTITY,
 )
 
 
@@ -162,7 +166,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                 "quota": "Stromkontingent",
                 "battery": "Batterie",
                 "benchmark": "Energie-Benchmark",
-                "save": "Speichern & Schließen",
+                "pv_strings": "PV-Strings",
             },
         )
 
@@ -437,9 +441,30 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
             })
         )
 
-    async def async_step_save(self, user_input=None):
-        """Speichert alle Änderungen."""
-        final_data = {}
-        final_data.update(self.config_entry.options)
-        final_data.update(self._data)
-        return self.async_create_entry(title="", data=final_data)
+    async def async_step_pv_strings(self, user_input=None):
+        """PV-Strings konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="pv_strings",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_PV_STRING_1_NAME, default=self._get_val(CONF_PV_STRING_1_NAME, "")):
+                    selector.TextSelector(),
+                vol.Optional(CONF_PV_STRING_1_ENTITY, default=self._get_val(CONF_PV_STRING_1_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_STRING_2_NAME, default=self._get_val(CONF_PV_STRING_2_NAME, "")):
+                    selector.TextSelector(),
+                vol.Optional(CONF_PV_STRING_2_ENTITY, default=self._get_val(CONF_PV_STRING_2_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_STRING_3_NAME, default=self._get_val(CONF_PV_STRING_3_NAME, "")):
+                    selector.TextSelector(),
+                vol.Optional(CONF_PV_STRING_3_ENTITY, default=self._get_val(CONF_PV_STRING_3_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+                vol.Optional(CONF_PV_STRING_4_NAME, default=self._get_val(CONF_PV_STRING_4_NAME, "")):
+                    selector.TextSelector(),
+                vol.Optional(CONF_PV_STRING_4_ENTITY, default=self._get_val(CONF_PV_STRING_4_ENTITY)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            })
+        )
+
