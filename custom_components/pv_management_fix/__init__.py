@@ -112,9 +112,10 @@ class PVManagementFixController:
         self._quota_over_budget_sent = False
         self._monthly_summary_month: int | None = None
 
-        # Wärmepumpe Delta-Tracking (seit erstem Sehen)
+        # Wärmepumpe Delta-Tracking (persistent über Neustarts)
         self._last_wp_kwh: float | None = None
         self._tracked_wp_kwh = 0.0
+        self._wp_first_seen_date: date | None = None
 
         # Listener
         self._remove_listeners = []
@@ -729,7 +730,8 @@ class PVManagementFixController:
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
         """Eigener Haushaltsstrom hochgerechnet auf 1 Jahr.
 
-        Wenn WP-Entity konfiguriert: Gesamtverbrauch MINUS WP-Verbrauch.
+        Wenn WP-Entity konfiguriert: Gesamtverbrauch MINUS WP-Jahresverbrauch.
+        Beide werden unabhängig auf 1 Jahr hochgerechnet (Zeiträume können abweichen).
         """
         days = self.days_since_installation
         if days < 7:
@@ -737,23 +739,21 @@ class PVManagementFixController:
         total = self.self_consumption_kwh + self._tracked_grid_import_kwh
         if total <= 0:
             return None
-        wp_consumption = 0.0
-        if self.benchmark_heatpump and self.benchmark_heatpump_entity:
-            wp_consumption = self._tracked_wp_kwh
-        household = total - wp_consumption
-        return max(0.0, household / days * 365)
+        total_annual = total / days * 365
+        wp_annual = self.benchmark_own_heatpump_kwh or 0.0
+        return max(0.0, total_annual - wp_annual)
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
         """WP-Jahresverbrauch (Delta seit erstem Sehen, hochgerechnet auf 1 Jahr)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
-        days = self.days_since_installation
-        if days < 7:
+        if self._tracked_wp_kwh <= 0 or self._wp_first_seen_date is None:
             return None
-        if self._tracked_wp_kwh <= 0:
+        wp_days = (date.today() - self._wp_first_seen_date).days
+        if wp_days < 1:
             return None
-        return self._tracked_wp_kwh / days * 365
+        return self._tracked_wp_kwh / wp_days * 365
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
@@ -1078,6 +1078,15 @@ class PVManagementFixController:
             except (ValueError, TypeError):
                 pass
 
+        # WP Delta-Tracking wiederherstellen
+        self._tracked_wp_kwh = safe_float(data.get("tracked_wp_kwh"))
+        wp_first_seen = data.get("wp_first_seen_date")
+        if wp_first_seen:
+            try:
+                self._wp_first_seen_date = date.fromisoformat(wp_first_seen) if isinstance(wp_first_seen, str) else wp_first_seen
+            except (ValueError, TypeError):
+                pass
+
         self._restored = True
         _LOGGER.info(
             "PV Management Fixpreis restored: %.2f kWh self, %.2f kWh feed, %.2f€ savings",
@@ -1157,6 +1166,8 @@ class PVManagementFixController:
             "monthly_grid_import_cost": self._monthly_grid_import_cost,
             "monthly_reset_month": today.month,
             "monthly_reset_year": today.year,
+            "tracked_wp_kwh": self._tracked_wp_kwh,
+            "wp_first_seen_date": self._wp_first_seen_date.isoformat() if self._wp_first_seen_date else None,
         }
 
     def _process_energy_update(self) -> None:
@@ -1282,6 +1293,8 @@ class PVManagementFixController:
         elif entity_id in (self.battery_soc_entity, self.battery_charge_entity, self.battery_discharge_entity):
             self._notify_entities()
         elif entity_id == self.benchmark_heatpump_entity:
+            if self._wp_first_seen_date is None:
+                self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
                 self._tracked_wp_kwh += value - self._last_wp_kwh
             self._last_wp_kwh = value
