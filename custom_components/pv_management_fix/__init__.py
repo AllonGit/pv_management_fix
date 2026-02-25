@@ -112,6 +112,10 @@ class PVManagementFixController:
         self._quota_over_budget_sent = False
         self._monthly_summary_month: int | None = None
 
+        # Wärmepumpe Delta-Tracking (seit erstem Sehen)
+        self._last_wp_kwh: float | None = None
+        self._tracked_wp_kwh = 0.0
+
         # Listener
         self._remove_listeners = []
         self._entity_listeners = []
@@ -735,24 +739,21 @@ class PVManagementFixController:
             return None
         wp_consumption = 0.0
         if self.benchmark_heatpump and self.benchmark_heatpump_entity:
-            wp_val, ok = self._get_entity_value(self.benchmark_heatpump_entity)
-            if ok and wp_val > 0:
-                wp_consumption = wp_val
+            wp_consumption = self._tracked_wp_kwh
         household = total - wp_consumption
         return max(0.0, household / days * 365)
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
-        """WP-Jahresverbrauch vom Entity (hochgerechnet auf 1 Jahr)."""
+        """WP-Jahresverbrauch (Delta seit erstem Sehen, hochgerechnet auf 1 Jahr)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
         days = self.days_since_installation
         if days < 7:
             return None
-        wp_val, ok = self._get_entity_value(self.benchmark_heatpump_entity)
-        if not ok or wp_val <= 0:
+        if self._tracked_wp_kwh <= 0:
             return None
-        return wp_val / days * 365
+        return self._tracked_wp_kwh / days * 365
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
@@ -1281,6 +1282,9 @@ class PVManagementFixController:
         elif entity_id in (self.battery_soc_entity, self.battery_charge_entity, self.battery_discharge_entity):
             self._notify_entities()
         elif entity_id == self.benchmark_heatpump_entity:
+            if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
+                self._tracked_wp_kwh += value - self._last_wp_kwh
+            self._last_wp_kwh = value
             self._notify_entities()
 
         if changed:
@@ -1306,6 +1310,15 @@ class PVManagementFixController:
         self._last_pv_production_kwh = self._pv_production_kwh
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
+
+        # WP-Sensor initialisieren (nur last-Wert, tracked bleibt 0)
+        if self.benchmark_heatpump_entity:
+            state = self.hass.states.get(self.benchmark_heatpump_entity)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    self._last_wp_kwh = float(state.state)
+                except (ValueError, TypeError):
+                    pass
 
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:
