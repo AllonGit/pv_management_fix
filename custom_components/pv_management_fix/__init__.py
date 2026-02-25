@@ -453,6 +453,14 @@ class PVManagementFixController:
         return self.quota_remaining_kwh / remaining_days
 
     @property
+    def quota_today_remaining_kwh(self) -> float | None:
+        """Verbleibendes Tagesbudget: Budget minus heutiger Verbrauch."""
+        budget = self.quota_daily_budget_kwh
+        if budget is None:
+            return None
+        return budget - self._daily_grid_import_kwh
+
+    @property
     def quota_forecast_kwh(self) -> float | None:
         """Hochrechnung: Verbrauch am Periodenende bei aktuellem Tempo."""
         days_elapsed = self.quota_days_elapsed

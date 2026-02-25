@@ -122,6 +122,7 @@ async def async_setup_entry(
             QuotaDailyBudgetSensor(ctrl, name),
             QuotaForecastSensor(ctrl, name),
             QuotaDaysRemainingSensor(ctrl, name),
+            QuotaTodayRemainingSensor(ctrl, name),
             QuotaStatusSensor(ctrl, name),
         ])
 
@@ -1113,6 +1114,45 @@ class QuotaDaysRemainingSensor(BaseEntity):
             "perioden_ende": end.isoformat() if end else None,
             "tage_vergangen": self.ctrl.quota_days_elapsed,
             "tage_gesamt": self.ctrl.quota_days_total,
+        }
+
+
+class QuotaTodayRemainingSensor(BaseEntity):
+    """Kontingent Heute Verbleibend — wieviel darf ich heute noch verbrauchen."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Kontingent Heute Verbleibend",
+            unit="kWh",
+            icon="mdi:clock-check",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_QUOTA,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.quota_today_remaining_kwh
+        if val is None:
+            return None
+        return round(val, 1)
+
+    @property
+    def icon(self) -> str:
+        val = self.ctrl.quota_today_remaining_kwh
+        if val is None:
+            return "mdi:clock-check"
+        if val >= 0:
+            return "mdi:clock-check"
+        return "mdi:clock-alert"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        budget = self.ctrl.quota_daily_budget_kwh
+        return {
+            "tagesbudget_kwh": round(budget, 1) if budget is not None else None,
+            "heute_verbraucht_kwh": round(self.ctrl.daily_grid_import_kwh, 1),
         }
 
 
