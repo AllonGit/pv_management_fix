@@ -21,7 +21,30 @@
 | **Electricity Quota** | Yearly kWh budget with seasonal weighting |
 | **ROI Calculation** | Return on Investment — before and after amortization |
 | **Daily Costs** | Grid import, feed-in, and net electricity cost per day |
+| **PV-Strings** | Compare up to 4 PV strings — production, peak power, efficiency (kWh/kWp) |
 | **Notifications** | Milestones, quota warnings, monthly reports |
+
+---
+
+## New in v1.9.6: PV-String Peak & Efficiency
+
+Compare your PV strings fairly — even with different module counts!
+
+- **Optional power sensor (W)** per string for automatic peak detection
+- **Peak sensor (kW):** Tracks the highest power output ever seen per string
+- **Efficiency sensor (kWh/kWp):** Production normalized by peak power — fair comparison regardless of string size
+- Peak values persist across HA restarts
+- Without power sensor: existing production/daily/percentage sensors work as before (no errors)
+
+| Sensor | What it shows | Example |
+|--------|--------------|---------|
+| Osten Produktion | Total tracked kWh | 670 kWh |
+| Osten Tagesproduktion | Average kWh per day | 4.5 kWh/day |
+| Osten Anteil | Share of total production | 35% |
+| **Osten Peak** | **Highest power ever recorded** | **3.2 kW** |
+| **Osten Effizienz** | **Production per kWp** | **209.4 kWh/kWp** |
+
+> Tip: A string with higher efficiency (kWh/kWp) performs better per installed capacity — useful for finding shading issues or optimal orientations.
 
 ---
 
@@ -122,6 +145,18 @@ Appears when enabled under Options > Energy Benchmark.
 | Benchmark HP Average | kWh/year | Reference HP consumption (only with HP) |
 | Benchmark HP Consumption | kWh/year | Your HP consumption (only with HP) |
 
+### Device: PV-Strings (optional)
+
+Appears when at least one PV string is configured under Options > PV-Strings.
+
+| Sensor | Unit | Description |
+|--------|------|-------------|
+| {Name} Produktion | kWh | Total tracked production for this string |
+| {Name} Tagesproduktion | kWh/day | Average daily production |
+| {Name} Anteil | % | Share of total string production |
+| {Name} Peak | kW | Highest power ever recorded (requires power sensor) |
+| {Name} Effizienz | kWh/kWp | Production per peak kW (requires power sensor) |
+
 ### Device: Battery (optional)
 
 Appears when at least one battery sensor is configured.
@@ -164,6 +199,7 @@ Under **Settings > Devices & Services > PV Energy Management+ > Configure**:
 | **Electricity Quota** | Yearly kWh, start date, meter reading, seasonal calculation |
 | **Battery** | SOC, charge/discharge sensors, capacity |
 | **Energy Benchmark** | Country, household size, heat pump |
+| **PV-Strings** | Up to 4 strings with name, kWh sensor, and optional power sensor (W) |
 
 ---
 
@@ -296,6 +332,7 @@ action:
 | Amortization | Yes | Yes |
 | Energy Tracking | Yes | Yes |
 | **Energy Benchmark** | **Yes** | **Yes** |
+| **PV-Strings** | **Yes** | **Yes** |
 | Battery Tracking | No | **Yes** |
 | ROI Calculation | No | **Yes** |
 | Electricity Quota | No | **Yes** |
@@ -312,6 +349,10 @@ For **spot tariffs** (aWATTar, smartENERGY) with battery management:
 ---
 
 ## Changelog
+
+### v1.9.6
+- **NEW: PV-String Peak & Efficiency** — Optional power sensor (W) per string for automatic peak tracking (kW) and efficiency calculation (kWh/kWp)
+- Fair comparison of strings with different module counts
 
 ### v1.9.0
 - **NEW: Energy Benchmark** — Compare with DACH averages (AT/DE/CH), CO2 savings, efficiency score 0-100
