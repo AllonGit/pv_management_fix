@@ -1237,6 +1237,13 @@ class PVManagementFixController:
         tracked = self._string_tracked_kwh.get(energy_entity_id, 0.0)
         return round(tracked / peak_kw, 1) if tracked > 0 else None
 
+    def get_total_peak_kw(self) -> float | None:
+        """Summe aller String-Peaks in kW."""
+        if not self._string_peak_w:
+            return None
+        total = sum(self._string_peak_w.values())
+        return round(total / 1000, 1) if total > 0 else None
+
     def _process_energy_update(self) -> None:
         """Verarbeitet Energie-Updates INKREMENTELL."""
         current_pv = self._pv_production_kwh

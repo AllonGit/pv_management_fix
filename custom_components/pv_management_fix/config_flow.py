@@ -178,7 +178,9 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
         # damit ein entfernter Sensor auch wirklich gelöscht wird
         for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY,
                     CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY,
-                    CONF_BENCHMARK_HEATPUMP_ENTITY):
+                    CONF_BENCHMARK_HEATPUMP_ENTITY,
+                    CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
+                    CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER):
             if key not in user_input and key in self.config_entry.options:
                 user_input[key] = None
 
