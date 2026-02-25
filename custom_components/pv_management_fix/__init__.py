@@ -748,11 +748,9 @@ class PVManagementFixController:
         """WP-Jahresverbrauch (Delta seit erstem Sehen, hochgerechnet auf 1 Jahr)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
             return None
-        if self._tracked_wp_kwh <= 0 or self._wp_first_seen_date is None:
+        if self._wp_first_seen_date is None or self._tracked_wp_kwh <= 0:
             return None
-        wp_days = (date.today() - self._wp_first_seen_date).days
-        if wp_days < 1:
-            return None
+        wp_days = max(1, (date.today() - self._wp_first_seen_date).days)
         return self._tracked_wp_kwh / wp_days * 365
 
     @property
@@ -1324,12 +1322,14 @@ class PVManagementFixController:
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
 
-        # WP-Sensor initialisieren (nur last-Wert, tracked bleibt 0)
+        # WP-Sensor initialisieren (last-Wert + first_seen_date)
         if self.benchmark_heatpump_entity:
             state = self.hass.states.get(self.benchmark_heatpump_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
                     self._last_wp_kwh = float(state.state)
+                    if self._wp_first_seen_date is None:
+                        self._wp_first_seen_date = date.today()
                 except (ValueError, TypeError):
                     pass
 
