@@ -114,3 +114,42 @@ RANGE_QUOTA_KWH: Final[dict] = {"min": 100.0, "max": 100000.0, "step": 1.0}
 RANGE_QUOTA_METER: Final[dict] = {"min": 0.0, "max": 9999999.0, "step": 0.01}
 RANGE_QUOTA_RATE: Final[dict] = {"min": 0.0, "max": 10000.0, "step": 0.01}
 RANGE_BATTERY_CAPACITY: Final[dict] = {"min": 0.1, "max": 200.0, "step": 0.1}
+
+# --- Benchmark ----------------------------------------------------------------
+CONF_BENCHMARK_ENABLED: Final[str] = "benchmark_enabled"
+CONF_BENCHMARK_HOUSEHOLD_SIZE: Final[str] = "benchmark_household_size"
+CONF_BENCHMARK_COUNTRY: Final[str] = "benchmark_country"
+
+DEFAULT_BENCHMARK_ENABLED: Final[bool] = False
+DEFAULT_BENCHMARK_HOUSEHOLD_SIZE: Final[int] = 3
+DEFAULT_BENCHMARK_COUNTRY: Final[str] = "AT"
+
+# Wärmepumpe (optional, für fairen Benchmark)
+CONF_BENCHMARK_HEATPUMP: Final[str] = "benchmark_heatpump"
+CONF_BENCHMARK_HEATPUMP_ENTITY: Final[str] = "benchmark_heatpump_entity"
+DEFAULT_BENCHMARK_HEATPUMP: Final[bool] = False
+
+# Durchschnittlicher Jahres-Stromverbrauch OHNE WP pro Haushaltsgröße (kWh/Jahr)
+# Quellen: E-Control (AT), BDEW (DE), BFE (CH) — 2023/2024 Daten
+BENCHMARK_CONSUMPTION: Final[dict[str, dict[int, int]]] = {
+    "AT": {1: 2200, 2: 3500, 3: 4000, 4: 4500, 5: 5500, 6: 6500},
+    "DE": {1: 2000, 2: 3200, 3: 3900, 4: 4400, 5: 5400, 6: 6300},
+    "CH": {1: 2500, 2: 3800, 3: 4400, 4: 5000, 5: 6000, 6: 7000},
+}
+
+# Durchschnittlicher WP-Stromverbrauch (kWh/Jahr) — Einfamilienhaus
+# Quellen: Austrian Energy Agency, BDEW Wärmepumpen-Studie 2023
+BENCHMARK_HEATPUMP_CONSUMPTION: Final[dict[str, int]] = {
+    "AT": 4000,  # ~160m² EFH, SCOP ~3.5
+    "DE": 4500,  # kälteres Klima im Schnitt
+    "CH": 3500,  # gut gedämmte Häuser
+}
+
+# CO2-Faktor Strommix (kg CO2/kWh) — Umweltbundesamt AT/DE, BFE CH
+BENCHMARK_CO2_FACTORS: Final[dict[str, float]] = {
+    "AT": 0.150,  # viel Wasserkraft
+    "DE": 0.380,  # noch Kohle/Gas
+    "CH": 0.030,  # Nuklear + Wasserkraft
+}
+
+RANGE_HOUSEHOLD_SIZE: Final[dict] = {"min": 1, "max": 6, "step": 1}

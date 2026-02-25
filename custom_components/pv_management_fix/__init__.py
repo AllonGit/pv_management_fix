@@ -22,6 +22,11 @@ from .const import (
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY,
     CONF_BATTERY_DISCHARGE_ENTITY, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY,
+    CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
+    DEFAULT_BENCHMARK_HEATPUMP,
+    BENCHMARK_CONSUMPTION, BENCHMARK_HEATPUMP_CONSUMPTION, BENCHMARK_CO2_FACTORS,
     DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -159,6 +164,13 @@ class PVManagementFixController:
         # Amortisation Helper (Pflicht für Persistenz)
         self.amortisation_helper = opts.get(CONF_AMORTISATION_HELPER)
         self.restore_from_helper = opts.get(CONF_RESTORE_FROM_HELPER, False)
+
+        # Benchmark
+        self.benchmark_enabled = opts.get(CONF_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_ENABLED)
+        self.benchmark_household_size = opts.get(CONF_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE)
+        self.benchmark_country = opts.get(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)
+        self.benchmark_heatpump = opts.get(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)
+        self.benchmark_heatpump_entity = opts.get(CONF_BENCHMARK_HEATPUMP_ENTITY)
 
     @property
     def fixed_price_ct(self) -> float:
@@ -692,6 +704,118 @@ class PVManagementFixController:
             return f"{self.amortisation_percent:.1f}% amortisiert"
 
     # =========================================================================
+    # BENCHMARK
+    # =========================================================================
+
+    @property
+    def benchmark_avg_consumption_kwh(self) -> int:
+        """Referenz-Haushaltsstrom (OHNE WP) aus Benchmark-Tabelle."""
+        country_data = BENCHMARK_CONSUMPTION.get(self.benchmark_country, BENCHMARK_CONSUMPTION["AT"])
+        size = max(1, min(6, self.benchmark_household_size))
+        return country_data.get(size, country_data[3])
+
+    @property
+    def benchmark_avg_heatpump_kwh(self) -> int | None:
+        """WP-Referenzverbrauch (nur wenn WP aktiv)."""
+        if not self.benchmark_heatpump:
+            return None
+        return BENCHMARK_HEATPUMP_CONSUMPTION.get(self.benchmark_country, BENCHMARK_HEATPUMP_CONSUMPTION["AT"])
+
+    @property
+    def benchmark_own_annual_consumption_kwh(self) -> float | None:
+        """Eigener Haushaltsstrom hochgerechnet auf 1 Jahr.
+
+        Wenn WP-Entity konfiguriert: Gesamtverbrauch MINUS WP-Verbrauch.
+        """
+        days = self.days_since_installation
+        if days < 7:
+            return None
+        total = self.self_consumption_kwh + self._tracked_grid_import_kwh
+        if total <= 0:
+            return None
+        wp_consumption = 0.0
+        if self.benchmark_heatpump and self.benchmark_heatpump_entity:
+            wp_val, ok = self._get_entity_value(self.benchmark_heatpump_entity)
+            if ok and wp_val > 0:
+                wp_consumption = wp_val
+        household = total - wp_consumption
+        return max(0.0, household / days * 365)
+
+    @property
+    def benchmark_own_heatpump_kwh(self) -> float | None:
+        """WP-Jahresverbrauch vom Entity (hochgerechnet auf 1 Jahr)."""
+        if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:
+            return None
+        days = self.days_since_installation
+        if days < 7:
+            return None
+        wp_val, ok = self._get_entity_value(self.benchmark_heatpump_entity)
+        if not ok or wp_val <= 0:
+            return None
+        return wp_val / days * 365
+
+    @property
+    def benchmark_consumption_vs_avg(self) -> float | None:
+        """Vergleich eigener Haushaltsstrom vs. Durchschnitt in %."""
+        own = self.benchmark_own_annual_consumption_kwh
+        if own is None:
+            return None
+        avg = self.benchmark_avg_consumption_kwh
+        if avg <= 0:
+            return None
+        return (own - avg) / avg * 100
+
+    @property
+    def benchmark_co2_avoided_kg(self) -> float | None:
+        """CO2-Einsparung durch PV pro Jahr (kg)."""
+        days = self.days_since_installation
+        if days < 7:
+            return None
+        daily_pv = self._pv_production_kwh / days if days > 0 else 0
+        annual_pv = daily_pv * 365
+        co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, BENCHMARK_CO2_FACTORS["AT"])
+        return annual_pv * co2_factor
+
+    @property
+    def benchmark_efficiency_score(self) -> int | None:
+        """Effizienz-Score 0-100."""
+        comparison = self.benchmark_consumption_vs_avg
+        if comparison is None:
+            return None
+
+        # Verbrauch vs. Durchschnitt (40 Punkte)
+        # -50% = 40 Punkte, 0% = 20 Punkte, +50% = 0 Punkte
+        consumption_score = max(0, min(40, 20 - comparison * 0.4))
+
+        # Autarkiegrad (30 Punkte)
+        autarky = self.autarky_rate
+        autarky_score = 0
+        if autarky is not None:
+            autarky_score = min(30, autarky * 0.3)
+
+        # Eigenverbrauchsquote (30 Punkte)
+        self_ratio = self.self_consumption_ratio
+        ratio_score = min(30, self_ratio * 0.3)
+
+        return int(consumption_score + autarky_score + ratio_score)
+
+    @property
+    def benchmark_rating(self) -> str | None:
+        """Bewertung als Text."""
+        score = self.benchmark_efficiency_score
+        if score is None:
+            return None
+        if score >= 80:
+            return "Hervorragend"
+        if score >= 60:
+            return "Sehr gut"
+        if score >= 40:
+            return "Gut"
+        if score >= 20:
+            return "Durchschnittlich"
+        return "Verbesserungspotenzial"
+
+    # =========================================================================
     # ENTITY MANAGEMENT
     # =========================================================================
 
@@ -1156,6 +1280,8 @@ class PVManagementFixController:
             self._consumption_kwh = value
         elif entity_id in (self.battery_soc_entity, self.battery_charge_entity, self.battery_discharge_entity):
             self._notify_entities()
+        elif entity_id == self.benchmark_heatpump_entity:
+            self._notify_entities()
 
         if changed:
             self._process_energy_update()
@@ -1276,18 +1402,24 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
                 old_batt_soc = ctrl.battery_soc_entity
                 old_batt_charge = ctrl.battery_charge_entity
                 old_batt_discharge = ctrl.battery_discharge_entity
+                old_benchmark = ctrl.benchmark_enabled
+                old_benchmark_hp = ctrl.benchmark_heatpump
 
                 opts = {**entry.data, **entry.options}
                 new_quota = opts.get(CONF_QUOTA_ENABLED, DEFAULT_QUOTA_ENABLED)
                 new_batt_soc = opts.get(CONF_BATTERY_SOC_ENTITY)
                 new_batt_charge = opts.get(CONF_BATTERY_CHARGE_ENTITY)
                 new_batt_discharge = opts.get(CONF_BATTERY_DISCHARGE_ENTITY)
+                new_benchmark = opts.get(CONF_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_ENABLED)
+                new_benchmark_hp = opts.get(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)
 
                 needs_reload = (
                     old_quota != new_quota
                     or old_batt_soc != new_batt_soc
                     or old_batt_charge != new_batt_charge
                     or old_batt_discharge != new_batt_discharge
+                    or old_benchmark != new_benchmark
+                    or old_benchmark_hp != new_benchmark_hp
                 )
 
                 if needs_reload:

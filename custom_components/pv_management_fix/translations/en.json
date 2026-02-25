@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Setup PV Management Fixed Price",
-        "description": "Simplified PV management for fixed-price tariffs. Calculates amortization and optionally compares with spot prices.",
+        "title": "Setup PV Energy Management+",
+        "description": "PV management for fixed-price tariffs. Calculates amortization, energy benchmark and optionally compares with spot prices.",
         "data": {
           "name": "Name",
           "pv_production_entity": "PV Production Sensor (kWh)",
@@ -44,7 +44,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Management Fixed Price Settings",
+        "title": "PV Energy Management+ Settings",
         "description": "Choose a category to configure.",
         "menu_options": {
           "sensors": "Sensors",
@@ -53,6 +53,7 @@
           "offsets": "Historical Data",
           "quota": "Electricity Quota",
           "battery": "Battery",
+          "benchmark": "Energy Benchmark",
           "save": "Save & Close"
         }
       },
@@ -144,6 +145,23 @@
           "battery_charge_entity": "Sensor for total battery charge in kWh (e.g. sensor.total_battery_charge)",
           "battery_discharge_entity": "Sensor for total battery discharge in kWh (e.g. sensor.total_battery_discharge)",
           "battery_capacity": "Usable capacity of battery storage in kWh"
+        }
+      },
+      "benchmark": {
+        "title": "Energy Benchmark",
+        "description": "Compare your consumption with the average for your country.",
+        "data": {
+          "benchmark_enabled": "Enable benchmark",
+          "benchmark_country": "Country",
+          "benchmark_household_size": "Household size (persons)",
+          "benchmark_heatpump": "Heat pump present",
+          "benchmark_heatpump_entity": "Heat pump energy sensor (kWh)"
+        },
+        "data_description": {
+          "benchmark_country": "Reference data: E-Control (AT), BDEW (DE), BFE (CH)",
+          "benchmark_household_size": "Number of persons in household",
+          "benchmark_heatpump": "When active, heat pump consumption is benchmarked separately",
+          "benchmark_heatpump_entity": "Total kWh counter of heat pump (optional, for fair comparison)"
         }
       },
       "save": {

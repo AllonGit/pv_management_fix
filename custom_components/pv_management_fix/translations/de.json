@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "PV Management Fixpreis einrichten",
-        "description": "Vereinfachte PV-Verwaltung für Fixpreis-Tarife. Berechnet Amortisation und vergleicht optional mit Spot-Preisen.",
+        "title": "PV Energy Management+ einrichten",
+        "description": "PV-Verwaltung für Fixpreis-Tarife. Berechnet Amortisation, Energie-Benchmark und vergleicht optional mit Spot-Preisen.",
         "data": {
           "name": "Name",
           "pv_production_entity": "PV Produktion Sensor (kWh)",
@@ -44,7 +44,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Management Fixpreis Einstellungen",
+        "title": "PV Energy Management+ Einstellungen",
         "description": "Wähle eine Kategorie zum Anpassen.",
         "menu_options": {
           "sensors": "Sensoren",
@@ -53,6 +53,7 @@
           "offsets": "Historische Daten",
           "quota": "Stromkontingent",
           "battery": "Batterie",
+          "benchmark": "Energie-Benchmark",
           "save": "Speichern & Schließen"
         }
       },
@@ -144,6 +145,23 @@
           "battery_charge_entity": "Sensor für die gesamte Batterie-Ladung in kWh (z.B. sensor.total_battery_charge)",
           "battery_discharge_entity": "Sensor für die gesamte Batterie-Entladung in kWh (z.B. sensor.total_battery_discharge)",
           "battery_capacity": "Nutzbare Kapazität des Batteriespeichers in kWh"
+        }
+      },
+      "benchmark": {
+        "title": "Energie-Benchmark",
+        "description": "Vergleiche deinen Verbrauch mit dem Durchschnitt für dein Land.",
+        "data": {
+          "benchmark_enabled": "Benchmark aktivieren",
+          "benchmark_country": "Land",
+          "benchmark_household_size": "Haushaltsgröße (Personen)",
+          "benchmark_heatpump": "Wärmepumpe vorhanden",
+          "benchmark_heatpump_entity": "Wärmepumpe Energie-Sensor (kWh)"
+        },
+        "data_description": {
+          "benchmark_country": "Referenzdaten: E-Control (AT), BDEW (DE), BFE (CH)",
+          "benchmark_household_size": "Anzahl Personen im Haushalt",
+          "benchmark_heatpump": "Wenn aktiv wird der WP-Verbrauch separat benchmarkt",
+          "benchmark_heatpump_entity": "Gesamt-kWh Zähler der Wärmepumpe (optional, für fairen Vergleich)"
         }
       },
       "save": {

@@ -18,7 +18,11 @@ from .const import (
     CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
     CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY,
     CONF_BATTERY_DISCHARGE_ENTITY, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY,
-    RANGE_BATTERY_CAPACITY,
+    CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
+    CONF_BENCHMARK_HEATPUMP, CONF_BENCHMARK_HEATPUMP_ENTITY,
+    DEFAULT_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_COUNTRY,
+    DEFAULT_BENCHMARK_HEATPUMP,
+    RANGE_BATTERY_CAPACITY, RANGE_HOUSEHOLD_SIZE,
     DEFAULT_NAME, DEFAULT_ELECTRICITY_PRICE, DEFAULT_FEED_IN_TARIFF,
     DEFAULT_INSTALLATION_COST, DEFAULT_SAVINGS_OFFSET, DEFAULT_FIXED_PRICE, DEFAULT_MARKUP_FACTOR,
     DEFAULT_ELECTRICITY_PRICE_UNIT, DEFAULT_FEED_IN_TARIFF_UNIT,
@@ -157,6 +161,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                 "offsets": "Historische Daten",
                 "quota": "Stromkontingent",
                 "battery": "Batterie",
+                "benchmark": "Energie-Benchmark",
                 "save": "Speichern & Schließen",
             },
         )
@@ -166,7 +171,8 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
         # Optionale Entity-Keys: wenn nicht im Input, explizit auf None setzen
         # damit ein entfernter Sensor auch wirklich gelöscht wird
         for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY,
-                    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY):
+                    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY,
+                    CONF_BENCHMARK_HEATPUMP_ENTITY):
             if key not in user_input and key in self.config_entry.options:
                 user_input[key] = None
 
@@ -391,6 +397,43 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+            })
+        )
+
+    async def async_step_benchmark(self, user_input=None):
+        """Energie-Benchmark konfigurieren."""
+        if user_input is not None:
+            return await self._save_and_return_to_menu(user_input)
+
+        return self.async_show_form(
+            step_id="benchmark",
+            data_schema=vol.Schema({
+                vol.Required(CONF_BENCHMARK_ENABLED, default=self._get_val(CONF_BENCHMARK_ENABLED, DEFAULT_BENCHMARK_ENABLED)):
+                    selector.BooleanSelector(),
+                vol.Required(CONF_BENCHMARK_COUNTRY, default=self._get_val(CONF_BENCHMARK_COUNTRY, DEFAULT_BENCHMARK_COUNTRY)):
+                    selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value="AT", label="Österreich"),
+                                selector.SelectOptionDict(value="DE", label="Deutschland"),
+                                selector.SelectOptionDict(value="CH", label="Schweiz"),
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                vol.Required(CONF_BENCHMARK_HOUSEHOLD_SIZE, default=self._get_val(CONF_BENCHMARK_HOUSEHOLD_SIZE, DEFAULT_BENCHMARK_HOUSEHOLD_SIZE)):
+                    selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=RANGE_HOUSEHOLD_SIZE["min"],
+                            max=RANGE_HOUSEHOLD_SIZE["max"],
+                            step=RANGE_HOUSEHOLD_SIZE["step"],
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                vol.Required(CONF_BENCHMARK_HEATPUMP, default=self._get_val(CONF_BENCHMARK_HEATPUMP, DEFAULT_BENCHMARK_HEATPUMP)):
+                    selector.BooleanSelector(),
+                self._optional_entity(CONF_BENCHMARK_HEATPUMP_ENTITY):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
             })
         )
 

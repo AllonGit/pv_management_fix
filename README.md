@@ -1,155 +1,182 @@
-# PV Management Fixpreis
+# PV Energy Management+
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/hoizi89/pv_management_fix)](https://github.com/hoizi89/pv_management_fix/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Home Assistant Integration für **Fixpreis-Stromtarife** (z.B. Grünwelt classic, Energie AG).
+> Die All-in-One Home Assistant Integration fuer deine PV-Anlage mit Fixpreis-Tarif.
 
-Berechnet die Amortisation deiner PV-Anlage, trackt Batterie-Effizienz und überwacht dein Stromkontingent.
+---
 
-## Features
+## Was kann diese Integration?
 
-- **Amortisationsberechnung** — Wie viel deiner PV-Anlage ist abbezahlt?
-- **Energie-Tracking** — Eigenverbrauch und Einspeisung (inkrementell, persistent)
-- **Batterie-Tracking** — Ladestand, Effizienz, Zyklen, Ladung/Entladung
-- **ROI-Berechnung** — Return on Investment nach Amortisation
-- **Stromkontingent** — Jahres-kWh-Budget mit saisonaler Gewichtung
-- **Tägliche Stromkosten** — Netzbezug, Einspeisung, Netto-Kosten pro Tag
-- **Helper-Sync** — Speichert Werte in input_number für maximale Persistenz
-- **Event-Benachrichtigungen** — Meilensteine, Kontingent-Warnungen, Monatszusammenfassungen
+| Feature | Beschreibung |
+|---------|-------------|
+| **Amortisation** | Sieh in Echtzeit, wie viel deiner PV-Anlage schon abbezahlt ist |
+| **Energie-Benchmark** | Vergleiche deinen Verbrauch mit dem DACH-Durchschnitt (AT/DE/CH) |
+| **Batterie-Tracking** | Ladestand, Effizienz, Zyklen — alles auf einen Blick |
+| **Stromkontingent** | Jahres-kWh-Budget mit saisonaler Gewichtung |
+| **ROI-Berechnung** | Return on Investment — vor und nach Amortisation |
+| **Tageskosten** | Netzbezug, Einspeisung und Netto-Stromkosten pro Tag |
+| **Benachrichtigungen** | Meilensteine, Kontingent-Warnungen, Monatsberichte |
+
+---
+
+## Neu in v1.9.0: Energie-Benchmark
+
+Vergleiche deinen Stromverbrauch mit dem Durchschnitt deines Landes — **komplett offline**, keine Cloud noetig.
+
+- **Laender:** Oesterreich, Deutschland, Schweiz
+- **Haushaltsgroesse:** 1-6 Personen
+- **6 Sensoren:** Durchschnitt, eigener Verbrauch, Vergleich (%), CO2-Einsparung, Effizienz-Score (0-100), Bewertung
+- **Waermepumpe optional:** WP-Verbrauch wird separat benchmarkt fuer fairen Vergleich
+
+| Sensor | Was er zeigt | Beispiel |
+|--------|-------------|---------|
+| Benchmark Durchschnitt | Referenzverbrauch fuer dein Land/Haushaltsgroesse | 4000 kWh/Jahr |
+| Benchmark Eigener Verbrauch | Dein Verbrauch hochgerechnet auf 1 Jahr | 3200 kWh/Jahr |
+| Benchmark Vergleich | Abweichung vom Durchschnitt | -20% |
+| Benchmark CO2 Vermieden | CO2-Einsparung durch PV pro Jahr | 180 kg/Jahr |
+| Benchmark Effizienz Score | Gesamtbewertung 0-100 | 72 Punkte |
+| Benchmark Bewertung | Textuelle Einstufung | "Sehr gut" |
+
+---
 
 ## Installation
 
 ### HACS (empfohlen)
 
-1. HACS öffnen > Integrationen > 3-Punkt-Menü > **Benutzerdefinierte Repositories**
-2. URL eingeben: `https://github.com/hoizi89/pv_management_fix`
+1. HACS oeffnen > Integrationen > 3-Punkt-Menue > **Benutzerdefinierte Repositories**
+2. URL: `https://github.com/hoizi89/pv_management_fix`
 3. Kategorie: **Integration**
-4. Integration suchen und installieren
-5. Home Assistant **neustarten**
+4. Installieren und Home Assistant **neustarten**
 
 ### Manuell
 
-1. `custom_components/pv_management_fix` Ordner nach `config/custom_components/` kopieren
-2. Home Assistant neustarten
+`custom_components/pv_management_fix` nach `config/custom_components/` kopieren, dann neustarten.
 
-## Konfiguration
+---
 
-1. Einstellungen > Geräte & Dienste > **Integration hinzufügen**
-2. "PV Management Fixpreis" suchen
-3. Sensoren auswählen:
-   - **PV Produktion** (Pflicht) — kWh-Zähler
-   - **Netzeinspeisung** (optional) — für Einnahmenberechnung
-   - **Netzbezug** (optional) — für Stromkontingent & Kostentracking
-   - **Hausverbrauch** (optional) — für Autarkiegrad
-4. **Fixpreis** eingeben (Standard: 10.92 ct/kWh netto)
-5. **Aufschlagfaktor** (Standard: 2.0 → 10ct netto wird 20ct brutto)
-6. **Anschaffungskosten** eingeben
-7. **Amortisation Helper** auswählen (input_number Entity)
+## Schnellstart
 
-## Sensoren
+1. **Einstellungen** > Geraete & Dienste > **Integration hinzufuegen**
+2. "PV Energy Management+" suchen
+3. Sensoren auswaehlen:
+   - **PV Produktion** (Pflicht) — kWh-Zaehler
+   - **Netzeinspeisung** (optional) — fuer Einnahmenberechnung
+   - **Netzbezug** (optional) — fuer Kontingent & Kostentracking
+   - **Hausverbrauch** (optional) — fuer Autarkiegrad
+4. **Fixpreis** eingeben (z.B. 10.92 ct/kWh netto)
+5. **Aufschlagfaktor** setzen (Standard: 2.0 — macht 10ct zu 20ct brutto)
+6. **Anschaffungskosten** und **Amortisation Helper** (input_number) konfigurieren
+
+> Alle Einstellungen koennen nachtraeglich unter **Optionen** geaendert werden.
+
+---
+
+## Sensoren-Uebersicht
 
 ### Haupt-Device: PV Fixpreis
 
-| Sensor | Beschreibung | Einheit |
-|--------|-------------|---------|
-| Amortisation | Prozent der Anlage abbezahlt | % |
-| Gesamtersparnis | Gesamte Ersparnis | € |
-| Restbetrag | Verbleibend bis Amortisation | € |
-| Status | Text-Zusammenfassung | — |
-| Restlaufzeit | Geschätzte Tage bis Amortisation | Tage |
-| Amortisationsdatum | Geschätztes Datum | Datum |
-| Eigenverbrauch | Selbst verbrauchte kWh | kWh |
-| Einspeisung | Ins Netz eingespeiste kWh | kWh |
-| Eigenverbrauchsquote | Anteil PV der selbst verbraucht wird | % |
-| Autarkiegrad | Anteil Verbrauch durch PV gedeckt | % |
-| Ersparnis pro Tag/Monat/Jahr | Durchschnittliche Ersparnis | €/Zeitraum |
-| CO2 Ersparnis | Eingesparte Emissionen | kg |
-| **ROI** | Return on Investment (nach Amortisation) | % |
-| **ROI pro Jahr** | Jährlicher ROI | %/Jahr |
-| Strompreis Brutto | Für Energy Dashboard | EUR/kWh |
+| Sensor | Einheit | Beschreibung |
+|--------|---------|-------------|
+| Amortisation | % | Wie viel der Anlage ist abbezahlt |
+| Gesamtersparnis | EUR | Ersparnis durch Eigenverbrauch + Einspeisung |
+| Restbetrag | EUR | Noch offen bis zur Amortisation |
+| Status | — | z.B. "45.2% amortisiert" oder "Amortisiert! +500EUR Gewinn" |
+| Restlaufzeit | Tage | Geschaetzte Tage bis Amortisation |
+| Amortisationsdatum | Datum | Wann ist die Anlage voraussichtlich abbezahlt |
+| Eigenverbrauch | kWh | PV-Strom der selbst verbraucht wurde |
+| Einspeisung | kWh | PV-Strom der ins Netz ging |
+| Eigenverbrauchsquote | % | Anteil der PV-Produktion die selbst genutzt wird |
+| Autarkiegrad | % | Anteil des Verbrauchs der durch PV gedeckt wird |
+| Ersparnis pro Tag/Monat/Jahr | EUR | Durchschnittliche Ersparnis |
+| CO2 Ersparnis | kg | Eingesparte CO2-Emissionen |
+| ROI | % | Return on Investment |
+| ROI pro Jahr | %/Jahr | Jaehrlicher ROI |
+| Strompreis Brutto | EUR/kWh | Fuer Energy Dashboard |
 
 ### Device: Strompreise
 
-| Sensor | Beschreibung | Einheit |
-|--------|-------------|---------|
-| Einspeisung Heute | Tägliche Einspeisevergütung | € |
-| Netzbezug Heute | Tägliche Netzbezugskosten | € |
-| Stromkosten Netto Heute | Netzbezug minus Einspeisung | € |
+| Sensor | Einheit | Beschreibung |
+|--------|---------|-------------|
+| Einspeisung Heute | EUR | Heutige Einspeiseverguetung |
+| Netzbezug Heute | EUR | Heutige Netzbezugskosten |
+| Stromkosten Netto Heute | EUR | Netzbezug minus Einspeisung |
+
+### Device: Energie-Benchmark (optional)
+
+Erscheint wenn unter Optionen > Energie-Benchmark aktiviert.
+
+| Sensor | Einheit | Beschreibung |
+|--------|---------|-------------|
+| Benchmark Durchschnitt | kWh/Jahr | Referenzverbrauch (E-Control/BDEW/BFE) |
+| Benchmark Eigener Verbrauch | kWh/Jahr | Dein Haushaltsstrom hochgerechnet |
+| Benchmark Vergleich | % | Abweichung (negativ = besser als Durchschnitt) |
+| Benchmark CO2 Vermieden | kg/Jahr | CO2-Einsparung durch PV |
+| Benchmark Effizienz Score | Punkte | 0-100 (Verbrauch + Autarkie + Eigenverbrauch) |
+| Benchmark Bewertung | — | Hervorragend / Sehr gut / Gut / Durchschnittlich |
+| Benchmark WP Durchschnitt | kWh/Jahr | Referenz WP-Verbrauch (nur mit WP) |
+| Benchmark WP Verbrauch | kWh/Jahr | Eigener WP-Verbrauch (nur mit WP) |
 
 ### Device: Batterie (optional)
 
-Erscheint nur wenn mindestens ein Batterie-Sensor konfiguriert ist.
+Erscheint wenn mindestens ein Batterie-Sensor konfiguriert ist.
 
-| Sensor | Beschreibung | Einheit |
-|--------|-------------|---------|
-| Batterie Ladestand | SOC mit dynamischem Icon | % |
-| Batterie Ladung Gesamt | Gesamt ins Batterie geladen | kWh |
-| Batterie Entladung Gesamt | Gesamt aus Batterie entladen | kWh |
-| Batterie Effizienz | Entladung / Ladung × 100 | % |
-| Batterie Zyklen | Geschätzt: Ladung / Kapazität | Zyklen |
-
-> **Beispiel:** 4868 kWh geladen, 3820 kWh entladen → **78.5% Effizienz**, **371 Zyklen** (bei 13.1 kWh Kapazität)
+| Sensor | Einheit | Beschreibung |
+|--------|---------|-------------|
+| Batterie Ladestand | % | SOC mit dynamischem Icon |
+| Batterie Ladung Gesamt | kWh | Gesamt ins Batterie geladen |
+| Batterie Entladung Gesamt | kWh | Gesamt aus Batterie entladen |
+| Batterie Effizienz | % | Entladung / Ladung x 100 |
+| Batterie Zyklen | Zyklen | Geschaetzt: Ladung / Kapazitaet |
 
 ### Device: Stromkontingent (optional)
 
-Erscheint nur wenn das Kontingent aktiviert ist.
+Erscheint wenn das Kontingent aktiviert ist.
 
-| Sensor | Beschreibung | Einheit |
-|--------|-------------|---------|
-| Kontingent Verbleibend | Verbleibende kWh im Jahresbudget | kWh |
-| Kontingent Verbrauch | Prozent des Kontingents verbraucht | % |
-| Kontingent Reserve | Über/unter Budget (positiv = gut) | kWh |
-| Kontingent Tagesbudget | Erlaubter Tagesverbrauch für Restperiode | kWh/Tag |
-| Kontingent Prognose | Hochrechnung Jahresverbrauch | kWh |
-| Kontingent Restlaufzeit | Verbleibende Tage in der Periode | Tage |
-| Kontingent Status | Text-Zusammenfassung | — |
+| Sensor | Einheit | Beschreibung |
+|--------|---------|-------------|
+| Kontingent Verbleibend | kWh | Verbleibende kWh im Jahresbudget |
+| Kontingent Verbrauch | % | Prozent des Kontingents verbraucht |
+| Kontingent Reserve | kWh | Ueber/unter Budget (positiv = gut) |
+| Kontingent Tagesbudget | kWh/Tag | Erlaubter Tagesverbrauch |
+| Kontingent Heute Verbleibend | kWh | Tagesbudget minus heutiger Verbrauch |
+| Kontingent Prognose | kWh | Hochrechnung Jahresverbrauch |
+| Kontingent Restlaufzeit | Tage | Verbleibende Tage in der Periode |
+| Kontingent Status | — | Text-Zusammenfassung |
 
-## Options (nach Setup änderbar)
+---
 
-### Sensoren
-- PV Produktion, Netzeinspeisung, Netzbezug, Hausverbrauch
+## Options (nach Setup aenderbar)
 
-### Strompreise & Amortisation
-- **Fixpreis netto** (ct/kWh) — Arbeitspreis vom Anbieter
-- **Aufschlagfaktor** (Standard: 2.0) — Netto × Faktor = Brutto
-- **Strompreis per Sensor** (optional) — überschreibt den statischen Fixpreis
-- **Einspeisevergütung** (€/kWh oder ct/kWh, statisch oder per Sensor)
-- **Anschaffungskosten** und **Installationsdatum**
+Unter **Einstellungen > Geraete & Dienste > PV Energy Management+ > Konfigurieren** findest du:
 
-> **Beispiel:** Netto 10.92 ct × Faktor 2.0 = **21.84 ct brutto** (wird für Ersparnisberechnung verwendet)
+| Kategorie | Was du einstellen kannst |
+|-----------|------------------------|
+| **Sensoren** | PV Produktion, Netzeinspeisung, Netzbezug, Hausverbrauch |
+| **Strompreise** | Fixpreis, Aufschlagfaktor, dynamischer Sensor, Einspeiseverguetung |
+| **Amortisation Helper** | input_number fuer persistente Speicherung |
+| **Historische Daten** | Bereits amortisierter Betrag, Energie-Offsets |
+| **Stromkontingent** | Jahres-kWh, Startdatum, Zaehlerstand, saisonale Berechnung |
+| **Batterie** | SOC, Ladung/Entladung Sensoren, Kapazitaet |
+| **Energie-Benchmark** | Land, Haushaltsgroesse, Waermepumpe |
 
-### Batterie
-- **Ladestand Sensor** (SOC) — z.B. `sensor.battery_state_of_charge`
-- **Ladung Gesamt Sensor** — z.B. `sensor.total_battery_charge`
-- **Entladung Gesamt Sensor** — z.B. `sensor.total_battery_discharge`
-- **Kapazität** in kWh (z.B. 13.1)
-
-### Amortisation Helper
-- **input_number Entity** — Speichert die Gesamtersparnis persistent
-- **Von Helper wiederherstellen** — Startwert beim nächsten Start laden
-
-### Historische Daten
-- Bereits amortisierter Betrag (€)
-- Eigenverbrauch / Einspeisung vor Tracking (kWh)
-
-### Stromkontingent
-- **Aktivieren/Deaktivieren** — Sensoren erscheinen automatisch (kein Neustart nötig)
-- **Jahres-Kontingent** in kWh (z.B. 4000)
-- **Startdatum** der Tarifperiode
-- **Zählerstand** am Startdatum (Netzbezug)
-- **Monatlicher Abschlag** (optional, nur Anzeige)
-- **Saisonale Berechnung** — Berücksichtigt Winter-/Sommer-Verbrauchsmuster
+---
 
 ## Energy Dashboard
 
 Verwende `sensor.pv_fixpreis_strompreis_brutto` als Strompreis-Entity im Home Assistant Energy Dashboard. Der Sensor gibt den Brutto-Preis in `EUR/kWh` aus.
 
-## Dashboard Beispiel
+---
+
+## Dashboard Beispiele
+
+### Amortisation
 
 ```yaml
 type: entities
-title: PV Fixpreis
+title: PV Amortisation
 entities:
   - entity: sensor.pv_fixpreis_status
   - entity: sensor.pv_fixpreis_amortisation
@@ -166,7 +193,23 @@ entities:
   - entity: sensor.pv_fixpreis_co2_ersparnis
 ```
 
-### Batterie Dashboard
+### Energie-Benchmark
+
+```yaml
+type: entities
+title: Energie-Benchmark
+entities:
+  - entity: sensor.pv_fixpreis_benchmark_effizienz_score
+  - entity: sensor.pv_fixpreis_benchmark_bewertung
+  - type: divider
+  - entity: sensor.pv_fixpreis_benchmark_eigener_verbrauch
+  - entity: sensor.pv_fixpreis_benchmark_durchschnitt
+  - entity: sensor.pv_fixpreis_benchmark_vergleich
+  - type: divider
+  - entity: sensor.pv_fixpreis_benchmark_co2_vermieden
+```
+
+### Batterie
 
 ```yaml
 type: entities
@@ -179,7 +222,7 @@ entities:
   - entity: sensor.pv_fixpreis_batterie_entladung_gesamt
 ```
 
-### Stromkontingent Dashboard
+### Stromkontingent
 
 ```yaml
 type: entities
@@ -190,11 +233,11 @@ entities:
   - entity: sensor.pv_fixpreis_kontingent_verbrauch
   - entity: sensor.pv_fixpreis_kontingent_reserve
   - entity: sensor.pv_fixpreis_kontingent_tagesbudget
+  - entity: sensor.pv_fixpreis_kontingent_heute_verbleibend
   - entity: sensor.pv_fixpreis_kontingent_prognose
-  - entity: sensor.pv_fixpreis_kontingent_restlaufzeit
 ```
 
-### Tägliche Stromkosten
+### Tageskosten
 
 ```yaml
 type: entities
@@ -205,47 +248,14 @@ entities:
   - entity: sensor.pv_fixpreis_stromkosten_netto_heute
 ```
 
+---
+
 ## Events (Benachrichtigungen)
 
-Die Integration feuert `pv_management_event` Events für eigene Automationen:
+Die Integration feuert `pv_management_event` Events fuer eigene Automationen:
 
 ### Meilenstein-Events (25%, 50%, 75%, 100%)
 ```yaml
-event_type: pv_management_event
-event_data:
-  type: "amortisation_milestone"
-  milestone: 50
-  total_savings: 3500.00
-  remaining: 3500.00
-  message: "50% der PV-Anlage amortisiert!"
-```
-
-### Kontingent-Warnungen (80%, 100%, über Budget)
-```yaml
-event_type: pv_management_event
-event_data:
-  type: "quota_warning_80"
-  consumed_percent: 80.5
-  remaining_kwh: 780
-  message: "80% des Stromkontingents verbraucht!"
-```
-
-### Monatliche Zusammenfassung
-```yaml
-event_type: pv_management_event
-event_data:
-  type: "monthly_summary"
-  month: "Januar 2025"
-  grid_import_kwh: 180.5
-  grid_import_cost: 32.50
-  amortisation_percent: 52.3
-  message: "PV-Bericht Januar 2025: 180 kWh Netzbezug, 52.3% amortisiert"
-```
-
-### Beispiel-Automation
-
-```yaml
-alias: "PV Meilenstein Benachrichtigung"
 trigger:
   - platform: event
     event_type: pv_management_event
@@ -254,70 +264,86 @@ trigger:
 action:
   - service: notify.mobile_app
     data:
-      title: "PV Meilenstein erreicht!"
+      title: "PV Meilenstein!"
       message: "{{ trigger.event.data.message }}"
 ```
 
+### Kontingent-Warnungen
+```yaml
+trigger:
+  - platform: event
+    event_type: pv_management_event
+    event_data:
+      type: quota_warning_80
+action:
+  - service: notify.mobile_app
+    data:
+      title: "Stromkontingent"
+      message: "{{ trigger.event.data.message }}"
+```
+
+---
+
 ## Unterschied zu pv_management
 
-Diese Integration ist optimiert für **Fixpreis-Tarife**.
-
-Für **Spot-Tarife** (aWATTar, smartENERGY) mit Batterie-Management:
-[pv_management](https://github.com/hoizi89/pv_management)
-
-| Feature | pv_management | pv_management_fix |
-|---------|--------------|-------------------|
+| Feature | pv_management (Spot) | pv_management_fix (Fixpreis) |
+|---------|---------------------|------------------------------|
 | Amortisation | Ja | Ja |
 | Energie-Tracking | Ja | Ja |
+| **Energie-Benchmark** | Nein | **Ja** |
 | Batterie-Tracking | Nein | Ja |
 | ROI-Berechnung | Nein | Ja |
 | Stromkontingent | Nein | Ja |
-| Tägliche Stromkosten | Nein | Ja |
+| Tageskosten | Nein | Ja |
 | Empfehlungssignal | Ja | Nein |
 | Auto-Charge | Ja | Nein |
 | Entlade-Steuerung | Ja | Nein |
 | EPEX Quantil | Ja | Nein |
 | Solcast | Ja | Nein |
 
+Fuer **Spot-Tarife** (aWATTar, smartENERGY) mit Batterie-Management:
+[pv_management](https://github.com/hoizi89/pv_management)
+
+---
+
 ## Changelog
 
+### v1.9.0
+- **NEU: Energie-Benchmark** — Vergleich mit DACH-Durchschnitt (AT/DE/CH), CO2-Einsparung, Effizienz-Score 0-100
+- **NEU: Waermepumpe** — Optionaler WP-Sensor fuer fairen Benchmark-Vergleich
+- **Rename:** "PV Management Fixpreis" -> "PV Energy Management+"
+- Domain und Entity-IDs bleiben unveraendert (kein Breaking Change)
+
 ### v1.8.1
-- **Fix:** `remaining_amount` → `remaining_cost` (Crash bei Meilensteinen)
-- **Fix:** Fehlende "Helper" Menu-Translation
+- Fix: `remaining_amount` -> `remaining_cost` (Crash bei Meilensteinen)
+- Fix: Fehlende "Helper" Menu-Translation
 
 ### v1.8.0
-- **NEU: Batterie-Tracking** — Eigenes Device mit 5 Sensoren (SOC, Ladung, Entladung, Effizienz, Zyklen)
-- **NEU: ROI-Sensoren** — Return on Investment und jährlicher ROI
-- **Fix: Quota-Sensoren** erscheinen ohne HA-Neustart wenn nachträglich aktiviert
-- Options-Menü: neuer "Batterie" Bereich
+- NEU: Batterie-Tracking (SOC, Ladung, Entladung, Effizienz, Zyklen)
+- NEU: ROI-Sensoren (Return on Investment + jaehrlicher ROI)
+- Fix: Quota-Sensoren erscheinen ohne HA-Neustart
 
 ### v1.7.1
 - Batterie-kompatible Eigenverbrauch- und Autarkiegrad-Berechnung
-- Verbesserte Preis-Config Labels
 
 ### v1.5.0
-- **NEU: Aufschlagfaktor** — Netto-Preis + Faktor für automatische Brutto-Berechnung
-- **NEU: Energy Dashboard Sensor** — `EUR/kWh` Sensor für HA Energy Dashboard
+- NEU: Aufschlagfaktor fuer automatische Brutto-Berechnung
+- NEU: Energy Dashboard Sensor (EUR/kWh)
 
 ### v1.4.0
-- **NEU: Helper-Sync** — input_number für persistente Ersparnisspeicherung
-- **NEU: Meilenstein-Events** — Automatische Events bei 25%, 50%, 75%, 100%
-- **NEU: Kontingent-Warnungen** — Events bei 80%, 100% und über Budget
-- **NEU: Monatliche Zusammenfassung**
+- NEU: Helper-Sync, Meilenstein-Events, Kontingent-Warnungen, Monatszusammenfassung
 
 ### v1.1.0
-- **NEU: Stromkontingent** — Jahres-kWh-Budget Tracking
-- 7 neue Sensoren für Kontingent-Überwachung
+- NEU: Stromkontingent (Jahres-kWh-Budget)
 
 ### v1.0.0
-- Erstveröffentlichung
-- Amortisationsberechnung mit Fixpreis
-- Energie-Tracking (Eigenverbrauch, Einspeisung)
-- Ersparnisstatistiken (Tag/Monat/Jahr)
+- Erstveroeffentlichung
+
+---
 
 ## Support
 
-[Fehler melden](https://github.com/hoizi89/pv_management_fix/issues)
+[Fehler melden](https://github.com/hoizi89/pv_management_fix/issues) | [Diskussionen](https://github.com/hoizi89/pv_management_fix/discussions)
 
 ## Lizenz
 
