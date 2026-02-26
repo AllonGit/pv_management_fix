@@ -497,7 +497,7 @@ class RemainingCostSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Restbetrag",
+            "Amort Restbetrag",
             unit="€",
             icon="mdi:cash-minus",
             state_class=None,
@@ -522,7 +522,7 @@ class StatusSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Status",
+            "Amort Status",
             icon="mdi:solar-power-variant",
         )
 
@@ -731,7 +731,7 @@ class AverageDailySavingsSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Ersparnis pro Tag",
+            "Amort Ersparnis/Tag",
             unit="€/Tag",
             icon="mdi:calendar-today",
             state_class=SensorStateClass.MEASUREMENT,
@@ -749,7 +749,7 @@ class AverageMonthlySavingsSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Ersparnis pro Monat",
+            "Amort Ersparnis/Monat",
             unit="€/Monat",
             icon="mdi:calendar-month",
             state_class=SensorStateClass.MEASUREMENT,
@@ -767,7 +767,7 @@ class AverageYearlySavingsSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Ersparnis pro Jahr",
+            "Amort Ersparnis/Jahr",
             unit="€/Jahr",
             icon="mdi:calendar",
             state_class=SensorStateClass.MEASUREMENT,
@@ -785,7 +785,7 @@ class DaysSinceInstallationSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Tage seit Installation",
+            "Amort Tage",
             unit="Tage",
             icon="mdi:calendar-clock",
             state_class=SensorStateClass.TOTAL_INCREASING,
@@ -808,7 +808,7 @@ class EstimatedRemainingDaysSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Restlaufzeit",
+            "Amort Restlaufzeit",
             unit="Tage",
             icon="mdi:timer-sand",
             state_class=SensorStateClass.MEASUREMENT,
@@ -851,7 +851,7 @@ class EstimatedPaybackDateSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Amortisationsdatum",
+            "Amort Datum",
             icon="mdi:calendar-check",
             device_class=SensorDeviceClass.DATE,
         )
@@ -1063,7 +1063,7 @@ class DailyFeedInSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Einspeisung Heute",
+            "Tages Einspeisung",
             unit="€",
             icon="mdi:transmission-tower-export",
             state_class=SensorStateClass.TOTAL,
@@ -1090,7 +1090,7 @@ class DailyGridImportSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Netzbezug Heute",
+            "Tages Netzbezug",
             unit="€",
             icon="mdi:transmission-tower-import",
             state_class=SensorStateClass.TOTAL,
@@ -1118,7 +1118,7 @@ class DailyNetElectricityCostSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Stromkosten Netto Heute",
+            "Tages Stromkosten",
             unit="€",
             icon="mdi:cash-register",
             state_class=SensorStateClass.TOTAL,
