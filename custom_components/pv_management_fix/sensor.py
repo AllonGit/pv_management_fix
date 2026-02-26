@@ -357,12 +357,20 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
                 "first_seen_date": attrs.get("first_seen_date"),
                 "tracked_grid_import_kwh": safe_float(attrs.get("tracked_grid_import_kwh")),
                 "total_grid_import_cost": safe_float(attrs.get("total_grid_import_cost")),
+                # WP Delta-Tracking
+                "tracked_wp_kwh": safe_float(attrs.get("tracked_wp_kwh")),
+                "wp_first_seen_date": attrs.get("wp_first_seen_date"),
+                # PV-String Delta-Tracking
+                "string_tracked_kwh": attrs.get("string_tracked_kwh", {}),
+                "string_first_seen_date": attrs.get("string_first_seen_date"),
+                "string_peak_w": attrs.get("string_peak_w", {}),
             }
 
             _LOGGER.info(
-                "TotalSavingsSensor: Restore data: self=%.2f kWh, feed=%.2f kWh",
+                "TotalSavingsSensor: Restore data: self=%.2f kWh, feed=%.2f kWh, wp=%.2f kWh",
                 restore_data["total_self_consumption_kwh"],
                 restore_data["total_feed_in_kwh"],
+                restore_data["tracked_wp_kwh"],
             )
 
             self.ctrl.restore_state(restore_data)
@@ -384,6 +392,13 @@ class TotalSavingsSensor(BaseEntity, RestoreEntity):
             "first_seen_date": self.ctrl._first_seen_date.isoformat() if self.ctrl._first_seen_date else None,
             "tracked_grid_import_kwh": round(self.ctrl._tracked_grid_import_kwh, 4),
             "total_grid_import_cost": round(self.ctrl._total_grid_import_cost, 4),
+            # WP Delta-Tracking (persistent)
+            "tracked_wp_kwh": round(self.ctrl._tracked_wp_kwh, 4),
+            "wp_first_seen_date": self.ctrl._wp_first_seen_date.isoformat() if self.ctrl._wp_first_seen_date else None,
+            # PV-String Delta-Tracking (persistent)
+            "string_tracked_kwh": self.ctrl._string_tracked_kwh,
+            "string_first_seen_date": self.ctrl._string_first_seen_date.isoformat() if self.ctrl._string_first_seen_date else None,
+            "string_peak_w": self.ctrl._string_peak_w,
             "calculation_method": "incremental (fixed price)",
         }
 
