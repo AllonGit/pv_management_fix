@@ -112,6 +112,12 @@ class PVManagementFixController:
         self._quota_over_budget_sent = False
         self._monthly_summary_month: int | None = None
 
+        # Benchmark-Startpunkte (Snapshot bei Reset/Erststart)
+        self._benchmark_start_date: date | None = None
+        self._benchmark_start_self_consumption: float = 0.0
+        self._benchmark_start_grid_import: float = 0.0
+        self._benchmark_start_feed_in: float = 0.0
+
         # Wärmepumpe Delta-Tracking (persistent über Neustarts)
         self._last_wp_kwh: float | None = None
         self._tracked_wp_kwh = 0.0
@@ -749,24 +755,31 @@ class PVManagementFixController:
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
         """Eigener Haushaltsstrom hochgerechnet auf 1 Jahr.
 
-        Verwendet nur Delta-getrackte Werte (ohne Offsets), damit der Zeitraum
-        konsistent mit dem WP-Tracking ist.
+        Verwendet Differenz seit Benchmark-Start (unabhängig von Amortisation).
         """
-        days = max(1, self.days_tracking)
-        total = self._total_self_consumption_kwh + self._tracked_grid_import_kwh
-        if total <= 0:
+        if self._benchmark_start_date is None:
             return None
-        total_annual = total / days * 365
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        consumption = (
+            (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
+            + (self._tracked_grid_import_kwh - self._benchmark_start_grid_import)
+        )
+        if consumption <= 0:
+            return None
+        total_annual = consumption / days * 365
         wp_annual = self.benchmark_own_heatpump_kwh or 0.0
         return max(0.0, total_annual - wp_annual)
 
     @property
     def benchmark_annual_grid_import_kwh(self) -> float | None:
-        """Jährlicher Netzbezug hochgerechnet (Delta-getrackt)."""
-        days = max(1, self.days_tracking)
-        if self._tracked_grid_import_kwh <= 0:
+        """Jährlicher Netzbezug hochgerechnet (seit Benchmark-Start)."""
+        if self._benchmark_start_date is None:
             return None
-        return self._tracked_grid_import_kwh / days * 365
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        grid_since_start = self._tracked_grid_import_kwh - self._benchmark_start_grid_import
+        if grid_since_start <= 0:
+            return None
+        return grid_since_start / days * 365
 
     @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
@@ -792,9 +805,14 @@ class PVManagementFixController:
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2-Einsparung durch PV pro Jahr (kg)."""
-        days = max(1, self.days_tracking)
-        tracked_pv = self._total_self_consumption_kwh + self._total_feed_in_kwh
-        daily_pv = tracked_pv / days
+        if self._benchmark_start_date is None:
+            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
+        pv_since_start = (
+            (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
+            + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
+        )
+        daily_pv = pv_since_start / days
         annual_pv = daily_pv * 365
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, BENCHMARK_CO2_FACTORS["AT"])
         return annual_pv * co2_factor
@@ -1139,6 +1157,17 @@ class PVManagementFixController:
             except (ValueError, TypeError):
                 pass
 
+        # Benchmark-Snapshot wiederherstellen
+        bsd = data.get("benchmark_start_date")
+        if bsd:
+            try:
+                self._benchmark_start_date = date.fromisoformat(bsd) if isinstance(bsd, str) else bsd
+            except (ValueError, TypeError):
+                pass
+        self._benchmark_start_self_consumption = safe_float(data.get("benchmark_start_self_consumption"))
+        self._benchmark_start_grid_import = safe_float(data.get("benchmark_start_grid_import"))
+        self._benchmark_start_feed_in = safe_float(data.get("benchmark_start_feed_in"))
+
         self._restored = True
         _LOGGER.info(
             "PV Management Fixpreis restored: %.2f kWh self, %.2f kWh feed, %.2f€ savings",
@@ -1226,6 +1255,10 @@ class PVManagementFixController:
             "string_peak_w": self._string_peak_w,
             "string_daily_peak_w": self._string_daily_peak_w,
             "string_daily_peak_date": self._string_daily_peak_date.isoformat() if self._string_daily_peak_date else None,
+            "benchmark_start_date": self._benchmark_start_date.isoformat() if self._benchmark_start_date else None,
+            "benchmark_start_self_consumption": self._benchmark_start_self_consumption,
+            "benchmark_start_grid_import": self._benchmark_start_grid_import,
+            "benchmark_start_feed_in": self._benchmark_start_feed_in,
         }
 
     def get_string_production_kwh(self, entity_id: str) -> float:
@@ -1532,6 +1565,20 @@ class PVManagementFixController:
         if self.pv_strings and self._string_first_seen_date is None:
             self._string_first_seen_date = date.today()
 
+        # Benchmark-Snapshot auto-initialisieren (erster Start oder nach Migration)
+        if self.benchmark_enabled and self._benchmark_start_date is None:
+            self._benchmark_start_date = date.today()
+            self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+            self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+            self._benchmark_start_feed_in = self._total_feed_in_kwh
+            _LOGGER.info(
+                "Benchmark-Snapshot initialisiert: date=%s, self=%.2f, grid=%.2f, feed=%.2f",
+                self._benchmark_start_date,
+                self._benchmark_start_self_consumption,
+                self._benchmark_start_grid_import,
+                self._benchmark_start_feed_in,
+            )
+
         # Versuche zuerst vom Helper zu restoren (falls konfiguriert)
         if self.restore_from_helper and self.amortisation_helper:
             restored = await self._restore_from_helper()
@@ -1580,11 +1627,17 @@ class PVManagementFixController:
         self._notify_entities()
 
     def reset_benchmark_tracking(self) -> None:
-        """Setzt Benchmark/WP-Tracking zurück."""
+        """Setzt Benchmark/WP-Tracking zurück — Snapshot der aktuellen Werte."""
         _LOGGER.info("Benchmark-Tracking wird zurückgesetzt (WP war: %.2f kWh)", self._tracked_wp_kwh)
+        # WP-Tracking zurücksetzen
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date = None
         self._last_wp_kwh = None
+        # Benchmark-Startpunkt auf jetzt setzen
+        self._benchmark_start_date = date.today()
+        self._benchmark_start_self_consumption = self._total_self_consumption_kwh
+        self._benchmark_start_grid_import = self._tracked_grid_import_kwh
+        self._benchmark_start_feed_in = self._total_feed_in_kwh
         self._notify_entities()
 
     def reset_pv_strings_tracking(self) -> None:
