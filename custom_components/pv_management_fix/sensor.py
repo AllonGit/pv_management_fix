@@ -154,6 +154,7 @@ async def async_setup_entry(
             entities.extend([
                 BenchmarkHeatpumpAvgSensor(ctrl, name),
                 BenchmarkHeatpumpOwnSensor(ctrl, name),
+                BenchmarkHouseholdSensor(ctrl, name),
             ])
 
     # === BATTERIE (nur wenn mindestens ein Entity konfiguriert) ===
@@ -1621,6 +1622,28 @@ class BenchmarkOwnSensor(BaseEntity):
     @property
     def native_value(self) -> float | None:
         val = self.ctrl.benchmark_own_annual_consumption_kwh
+        if val is None:
+            return None
+        return round(val, 0)
+
+
+class BenchmarkHouseholdSensor(BaseEntity):
+    """Haushaltsverbrauch ohne WP, hochgerechnet auf 1 Jahr."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Haushaltsverbrauch",
+            unit="kWh/Jahr",
+            icon="mdi:home-lightning-bolt-outline",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.benchmark_household_consumption_kwh
         if val is None:
             return None
         return round(val, 0)

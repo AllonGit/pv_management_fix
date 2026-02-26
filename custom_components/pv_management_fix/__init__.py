@@ -801,19 +801,24 @@ class PVManagementFixController:
         return self._tracked_wp_kwh / wp_days * 365
 
     @property
-    def benchmark_consumption_vs_avg(self) -> float | None:
-        """Vergleich Gesamtverbrauch vs. Durchschnitt in %.
+    def benchmark_household_consumption_kwh(self) -> float | None:
+        """Haushaltsverbrauch ohne WP, hochgerechnet auf 1 Jahr."""
+        total = self.benchmark_own_annual_consumption_kwh
+        if total is None:
+            return None
+        wp = self.benchmark_own_heatpump_kwh or 0.0
+        return max(0.0, total - wp)
 
-        Wenn WP aktiv: Vergleich gegen Haushaltsdurchschnitt + WP-Durchschnitt.
-        """
-        own = self.benchmark_own_annual_consumption_kwh
-        if own is None:
+    @property
+    def benchmark_consumption_vs_avg(self) -> float | None:
+        """Vergleich Haushaltsverbrauch (ohne WP) vs. Durchschnitt in %."""
+        household = self.benchmark_household_consumption_kwh
+        if household is None:
             return None
         avg = self.benchmark_avg_consumption_kwh
         if avg <= 0:
             return None
-        wp_avg = self.benchmark_avg_heatpump_kwh or 0
-        return (own - (avg + wp_avg)) / (avg + wp_avg) * 100
+        return (household - avg) / avg * 100
 
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
