@@ -122,6 +122,8 @@ class PVManagementFixController:
         self._string_tracked_kwh: dict[str, float] = {}
         self._string_first_seen_date: date | None = None
         self._string_peak_w: dict[str, float] = {}
+        self._string_daily_peak_w: dict[str, float] = {}
+        self._string_daily_peak_date: date | None = None
 
         # Listener
         self._remove_listeners = []
@@ -1089,6 +1091,17 @@ class PVManagementFixController:
                 pass
         raw_peak = data.get("string_peak_w", {})
         self._string_peak_w = {k: safe_float(v) for k, v in raw_peak.items()} if isinstance(raw_peak, dict) else {}
+        # Daily Peak restore (nur wenn heute)
+        dp_date = data.get("string_daily_peak_date")
+        if dp_date:
+            try:
+                dp = date.fromisoformat(dp_date) if isinstance(dp_date, str) else dp_date
+                if dp == date.today():
+                    raw_dp = data.get("string_daily_peak_w", {})
+                    self._string_daily_peak_w = {k: safe_float(v) for k, v in raw_dp.items()} if isinstance(raw_dp, dict) else {}
+                    self._string_daily_peak_date = dp
+            except (ValueError, TypeError):
+                pass
 
         self._restored = True
         _LOGGER.info(
@@ -1174,6 +1187,8 @@ class PVManagementFixController:
             "string_tracked_kwh": self._string_tracked_kwh,
             "string_first_seen_date": self._string_first_seen_date.isoformat() if self._string_first_seen_date else None,
             "string_peak_w": self._string_peak_w,
+            "string_daily_peak_w": self._string_daily_peak_w,
+            "string_daily_peak_date": self._string_daily_peak_date.isoformat() if self._string_daily_peak_date else None,
         }
 
     def get_string_production_kwh(self, entity_id: str) -> float:
@@ -1217,6 +1232,20 @@ class PVManagementFixController:
         if not self._string_peak_w:
             return None
         total = sum(self._string_peak_w.values())
+        return round(total / 1000, 1) if total > 0 else None
+
+    def get_string_daily_peak_kw(self, power_entity_id: str) -> float | None:
+        """Heutiger Peak eines Strings in kW."""
+        if not power_entity_id:
+            return None
+        peak = self._string_daily_peak_w.get(power_entity_id, 0.0)
+        return round(peak / 1000, 1) if peak > 0 else None
+
+    def get_total_daily_peak_kw(self) -> float | None:
+        """Summe aller String-Peaks heute in kW."""
+        if not self._string_daily_peak_w:
+            return None
+        total = sum(self._string_daily_peak_w.values())
         return round(total / 1000, 1) if total > 0 else None
 
     def _process_energy_update(self) -> None:
@@ -1366,7 +1395,15 @@ class PVManagementFixController:
             current_peak = self._string_peak_w.get(entity_id, 0.0)
             if value > current_peak:
                 self._string_peak_w[entity_id] = value
-                self._notify_entities()
+            # Daily Peak: bei neuem Tag resetten
+            today = date.today()
+            if self._string_daily_peak_date != today:
+                self._string_daily_peak_w = {}
+                self._string_daily_peak_date = today
+            daily_peak = self._string_daily_peak_w.get(entity_id, 0.0)
+            if value > daily_peak:
+                self._string_daily_peak_w[entity_id] = value
+            self._notify_entities()
 
         if changed:
             self._process_energy_update()
