@@ -1030,7 +1030,7 @@ class DailyFeedInSensor(BaseEntity):
             "Einspeisung Heute",
             unit="€",
             icon="mdi:transmission-tower-export",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1057,7 +1057,7 @@ class DailyGridImportSensor(BaseEntity):
             "Netzbezug Heute",
             unit="€",
             icon="mdi:transmission-tower-import",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1085,7 +1085,7 @@ class DailyNetElectricityCostSensor(BaseEntity):
             "Stromkosten Netto Heute",
             unit="€",
             icon="mdi:cash-register",
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             device_class=SensorDeviceClass.MONETARY,
             device_type=DEVICE_PRICES,
         )
@@ -1117,8 +1117,6 @@ class QuotaRemainingSensor(BaseEntity):
             "Kontingent Verbleibend",
             unit="kWh",
             icon="mdi:lightning-bolt",
-            state_class=SensorStateClass.MEASUREMENT,
-            device_class=SensorDeviceClass.ENERGY,
             device_type=DEVICE_QUOTA,
         )
 
