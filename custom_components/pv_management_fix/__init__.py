@@ -764,9 +764,7 @@ class PVManagementFixController:
         """
         if self._benchmark_start_date is None:
             return None
-        days = (date.today() - self._benchmark_start_date).days
-        if days < 3:
-            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
         consumption = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
             + (self._tracked_grid_import_kwh - self._benchmark_start_grid_import)
@@ -784,9 +782,7 @@ class PVManagementFixController:
         """Jährlicher Netzbezug hochgerechnet (seit Benchmark-Start)."""
         if self._benchmark_start_date is None:
             return None
-        days = (date.today() - self._benchmark_start_date).days
-        if days < 3:
-            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
         grid_since_start = self._tracked_grid_import_kwh - self._benchmark_start_grid_import
         if grid_since_start <= 0:
             return None
@@ -821,9 +817,7 @@ class PVManagementFixController:
         """CO2-Einsparung durch PV pro Jahr (kg)."""
         if self._benchmark_start_date is None:
             return None
-        days = (date.today() - self._benchmark_start_date).days
-        if days < 3:
-            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
         pv_since_start = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
             + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
@@ -842,9 +836,7 @@ class PVManagementFixController:
         """Hochgerechnete PV-Jahresproduktion (snapshot-basiert)."""
         if self._benchmark_start_date is None:
             return None
-        days = (date.today() - self._benchmark_start_date).days
-        if days < 3:
-            return None
+        days = max(1, (date.today() - self._benchmark_start_date).days)
         pv_since_start = (
             (self._total_self_consumption_kwh - self._benchmark_start_self_consumption)
             + (self._total_feed_in_kwh - self._benchmark_start_feed_in)
