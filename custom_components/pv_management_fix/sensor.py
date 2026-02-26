@@ -1681,7 +1681,7 @@ class BenchmarkGridImportSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Netzbezug Jahres",
+            "Netz Bezug",
             unit="kWh/Jahr",
             icon="mdi:transmission-tower-import",
             state_class=SensorStateClass.MEASUREMENT,
