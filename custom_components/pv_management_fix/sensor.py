@@ -154,6 +154,7 @@ async def async_setup_entry(
             entities.extend([
                 BenchmarkHeatpumpAvgSensor(ctrl, name),
                 BenchmarkHeatpumpOwnSensor(ctrl, name),
+                BenchmarkHeatpumpComparisonSensor(ctrl, name),
                 BenchmarkHouseholdSensor(ctrl, name),
             ])
 
@@ -1593,7 +1594,7 @@ class BenchmarkAvgSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Durchschnitt",
+            "Haus Durchschnitt",
             unit="kWh/Jahr",
             icon="mdi:home-group",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1634,7 +1635,7 @@ class BenchmarkHouseholdSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Haushaltsverbrauch",
+            "Haus Verbrauch",
             unit="kWh/Jahr",
             icon="mdi:home-lightning-bolt-outline",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1722,7 +1723,7 @@ class BenchmarkComparisonSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Vergleich",
+            "Haus Vergleich",
             unit="%",
             icon="mdi:check-circle",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1877,3 +1878,25 @@ class BenchmarkHeatpumpOwnSensor(BaseEntity):
         if val is None:
             return None
         return round(val, 0)
+
+
+class BenchmarkHeatpumpComparisonSensor(BaseEntity):
+    """Benchmark WP Vergleich — WP-Verbrauch vs. WP-Durchschnitt in %."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "WP Vergleich",
+            unit="%",
+            icon="mdi:heat-pump",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.benchmark_heatpump_vs_avg
+        if val is None:
+            return None
+        return round(val, 1)
