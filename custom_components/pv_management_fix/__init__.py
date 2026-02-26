@@ -19,7 +19,7 @@ from .const import (
     CONF_FIXED_PRICE, CONF_MARKUP_FACTOR,
     CONF_AMORTISATION_HELPER, CONF_RESTORE_FROM_HELPER,
     CONF_QUOTA_ENABLED, CONF_QUOTA_YEARLY_KWH, CONF_QUOTA_START_DATE,
-    CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE, CONF_QUOTA_SEASONAL,
+    CONF_QUOTA_START_METER, CONF_QUOTA_MONTHLY_RATE,
     CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY,
     CONF_BATTERY_DISCHARGE_ENTITY, CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY,
     CONF_BENCHMARK_ENABLED, CONF_BENCHMARK_HOUSEHOLD_SIZE, CONF_BENCHMARK_COUNTRY,
@@ -33,7 +33,6 @@ from .const import (
     DEFAULT_FIXED_PRICE, DEFAULT_MARKUP_FACTOR, DEFAULT_ENERGY_OFFSET_SELF, DEFAULT_ENERGY_OFFSET_EXPORT,
     DEFAULT_QUOTA_ENABLED, DEFAULT_QUOTA_YEARLY_KWH,
     DEFAULT_QUOTA_START_METER, DEFAULT_QUOTA_MONTHLY_RATE,
-    DEFAULT_QUOTA_SEASONAL, SEASONAL_FACTORS,
     PRICE_UNIT_CENT,
     PV_STRING_CONFIGS,
 )
@@ -165,7 +164,7 @@ class PVManagementFixController:
         self.quota_start_date_str = opts.get(CONF_QUOTA_START_DATE)
         self.quota_start_meter = opts.get(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)
         self.quota_monthly_rate = opts.get(CONF_QUOTA_MONTHLY_RATE, DEFAULT_QUOTA_MONTHLY_RATE)
-        self.quota_seasonal = opts.get(CONF_QUOTA_SEASONAL, DEFAULT_QUOTA_SEASONAL)
+        # quota_seasonal entfernt — linearer Ansatz ist transparenter und selbstregulierend
 
         # Batterie
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
@@ -446,38 +445,14 @@ class PVManagementFixController:
             return 0.0
         return min(100.0, (self.quota_consumed_kwh / self.quota_yearly_kwh) * 100)
 
-    def _quota_seasonal_expected(self, from_date: date, to_date: date) -> float:
-        """Berechnet den saisonalen Soll-Verbrauch zwischen zwei Daten."""
-        import calendar
-        total = 0.0
-        current = from_date
-        while current < to_date:
-            month = current.month
-            days_in_month = calendar.monthrange(current.year, month)[1]
-            factor = SEASONAL_FACTORS.get(month, 1.0)
-            daily_value = (factor / 12.0) * self.quota_yearly_kwh / days_in_month
-            total += daily_value
-            current += timedelta(days=1)
-        return total
-
-    def _quota_seasonal_fraction(self, from_date: date, to_date: date) -> float:
-        """Berechnet den saisonalen Anteil der Periode (0.0 - 1.0)."""
-        if self.quota_yearly_kwh <= 0:
-            return 0.0
-        return self._quota_seasonal_expected(from_date, to_date) / self.quota_yearly_kwh
-
     @property
     def quota_expected_kwh(self) -> float:
-        """Soll-Verbrauch (saisonal gewichtet oder linear, Starttag = Tag 1)."""
+        """Soll-Verbrauch (linear, Starttag = Tag 1)."""
         if self.quota_days_total <= 0:
             return 0.0
         start = self.quota_start_date
         if start is None or date.today() < start:
             return 0.0
-        if self.quota_seasonal:
-            from datetime import timedelta
-            end = date.today() + timedelta(days=1)
-            return self._quota_seasonal_expected(start, end)
         return (self.quota_days_elapsed / self.quota_days_total) * self.quota_yearly_kwh
 
     @property
@@ -487,14 +462,7 @@ class PVManagementFixController:
 
     @property
     def quota_daily_budget_kwh(self) -> float | None:
-        """Tagesbudget (saisonal gewichtet oder linear)."""
-        if self.quota_seasonal:
-            import calendar
-            today = date.today()
-            month = today.month
-            days_in_month = calendar.monthrange(today.year, month)[1]
-            factor = SEASONAL_FACTORS.get(month, 1.0)
-            return (factor / 12.0) * self.quota_yearly_kwh / days_in_month
+        """Tagesbudget: Restmenge / Resttage (steigt wenn du sparst, sinkt wenn du mehr verbrauchst)."""
         remaining_days = self.quota_days_remaining
         if remaining_days <= 0:
             return None
@@ -514,12 +482,6 @@ class PVManagementFixController:
         days_elapsed = self.quota_days_elapsed
         if days_elapsed <= 0:
             return None
-        start = self.quota_start_date
-        if self.quota_seasonal and start is not None:
-            fraction = self._quota_seasonal_fraction(start, date.today())
-            if fraction <= 0:
-                return None
-            return self.quota_consumed_kwh / fraction
         return (self.quota_consumed_kwh / days_elapsed) * self.quota_days_total
 
     @property
