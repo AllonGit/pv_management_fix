@@ -487,7 +487,14 @@ class PVManagementFixController:
 
     @property
     def quota_daily_budget_kwh(self) -> float | None:
-        """Tagesbudget für Rest der Periode (kWh/Tag)."""
+        """Tagesbudget (saisonal gewichtet oder linear)."""
+        if self.quota_seasonal:
+            import calendar
+            today = date.today()
+            month = today.month
+            days_in_month = calendar.monthrange(today.year, month)[1]
+            factor = SEASONAL_FACTORS.get(month, 1.0)
+            return (factor / 12.0) * self.quota_yearly_kwh / days_in_month
         remaining_days = self.quota_days_remaining
         if remaining_days <= 0:
             return None
