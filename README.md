@@ -26,25 +26,40 @@
 
 ---
 
-## New in v1.9.6: PV-String Peak & Efficiency
+## New in v1.14.0: Annual PV Production & Specific Yield
 
-Compare your PV strings fairly — even with different module counts!
+Track how well your PV system performs!
 
-- **Optional power sensor (W)** per string for automatic peak detection
-- **Peak sensor (kW):** Tracks the highest power output ever seen per string
-- **Efficiency sensor (kWh/kWp):** Production normalized by peak power — fair comparison regardless of string size
-- Peak values persist across HA restarts
-- Without power sensor: existing production/daily/percentage sensors work as before (no errors)
+- **Annual PV Production (kWh/year):** Extrapolated from benchmark tracking period
+- **Specific Yield (kWh/kWp):** Annual production per installed capacity — the standard metric for PV performance
+- **Per-string Specific Yield:** Compare strings fairly based on their installed kWp
+- **Performance Ratio (%):** Measured peak vs. installed capacity — shows how close a string gets to nameplate power
+- **Installed capacity (kWp)** per string as optional config — falls back to measured peaks if not set
+- Uses the sum of all string kWp for the system-wide specific yield
 
 | Sensor | What it shows | Example |
 |--------|--------------|---------|
-| Osten Produktion | Total tracked kWh | 670 kWh |
-| Osten Tagesproduktion | Average kWh per day | 4.5 kWh/day |
-| Osten Anteil | Share of total production | 35% |
-| **Osten Peak** | **Highest power ever recorded** | **3.2 kW** |
-| **Osten Effizienz** | **Production per kWp** | **209.4 kWh/kWp** |
+| Jahresproduktion | Annual PV production (extrapolated) | 14,200 kWh/year |
+| Spezifischer Ertrag | Annual production per kWp | 967 kWh/kWp |
+| Osten Spez. Ertrag | Per-string specific yield | 890 kWh/kWp |
+| Osten Performance Ratio | Peak vs. installed capacity | 92.5% |
 
-> Tip: A string with higher efficiency (kWh/kWp) performs better per installed capacity — useful for finding shading issues or optimal orientations.
+> Tip: In Austria/Germany, 900-1100 kWh/kWp per year is typical. Specific yield helps you spot underperforming strings.
+
+---
+
+## PV-String Comparison
+
+Compare up to 4 PV strings — with optional power sensor and installed capacity.
+
+| Sensor | What it shows | Example |
+|--------|--------------|---------|
+| {Name} Produktion | Total tracked kWh | 670 kWh |
+| {Name} Tagesproduktion | Average kWh per day | 4.5 kWh/day |
+| {Name} Anteil | Share of total production | 35% |
+| {Name} Peak | Highest power ever recorded (requires power sensor) | 3.2 kW |
+| {Name} Spez. Ertrag | Annual kWh per installed kWp (requires kWp or power sensor) | 890 kWh/kWp |
+| {Name} Performance Ratio | Measured peak vs. installed capacity (requires both) | 92.5% |
 
 ---
 
@@ -136,14 +151,17 @@ Appears when enabled under Options > Energy Benchmark.
 
 | Sensor | Unit | Description |
 |--------|------|-------------|
-| Benchmark Average | kWh/year | Reference consumption (E-Control/BDEW/BFE) |
-| Benchmark Own Consumption | kWh/year | Your household consumption extrapolated |
-| Benchmark Comparison | % | Deviation (negative = better than average) |
-| Benchmark CO2 Avoided | kg/year | CO2 savings from PV |
-| Benchmark Efficiency Score | Points | 0-100 (consumption + autarky + self-consumption) |
-| Benchmark Rating | — | Hervorragend / Sehr gut / Gut / Durchschnittlich |
-| Benchmark HP Average | kWh/year | Reference HP consumption (only with HP) |
-| Benchmark HP Consumption | kWh/year | Your HP consumption (only with HP) |
+| Durchschnitt | kWh/year | Reference consumption (E-Control/BDEW/BFE) |
+| Eigener Verbrauch | kWh/year | Your household consumption extrapolated |
+| Netzbezug Jahres | kWh/year | Annual grid import extrapolated |
+| Jahresproduktion | kWh/year | Annual PV production extrapolated |
+| Spezifischer Ertrag | kWh/kWp | Annual production per installed kWp (requires PV strings) |
+| Vergleich | % | Deviation (negative = better than average) |
+| CO2 Vermieden | kg/year | CO2 savings from PV |
+| Effizienz Score | Points | 0-100 (consumption + autarky + self-consumption) |
+| Bewertung | — | Hervorragend / Sehr gut / Gut / Durchschnittlich |
+| WP Durchschnitt | kWh/year | Reference HP consumption (only with HP) |
+| WP Verbrauch | kWh/year | Your HP consumption (only with HP) |
 
 ### Device: PV-Strings (optional)
 
@@ -155,7 +173,8 @@ Appears when at least one PV string is configured under Options > PV-Strings.
 | {Name} Tagesproduktion | kWh/day | Average daily production |
 | {Name} Anteil | % | Share of total string production |
 | {Name} Peak | kW | Highest power ever recorded (requires power sensor) |
-| {Name} Effizienz | kWh/kWp | Production per peak kW (requires power sensor) |
+| {Name} Spez. Ertrag | kWh/kWp | Annual production per kWp (requires kWp or power sensor) |
+| {Name} Performance Ratio | % | Measured peak vs. installed capacity (requires kWp + power) |
 
 ### Device: Battery (optional)
 
@@ -199,7 +218,7 @@ Under **Settings > Devices & Services > PV Energy Management+ > Configure**:
 | **Electricity Quota** | Yearly kWh, start date, meter reading, seasonal calculation |
 | **Battery** | SOC, charge/discharge sensors, capacity |
 | **Energy Benchmark** | Country, household size, heat pump |
-| **PV-Strings** | Up to 4 strings with name, kWh sensor, and optional power sensor (W) |
+| **PV-Strings** | Up to 4 strings with name, kWh sensor, optional power sensor (W), and optional installed capacity (kWp) |
 
 ---
 
@@ -349,6 +368,16 @@ For **spot tariffs** (aWATTar, smartENERGY) with battery management:
 ---
 
 ## Changelog
+
+### v1.14.0
+- **NEW: Annual PV Production** — Extrapolated yearly PV production from benchmark tracking
+- **NEW: Specific Yield (kWh/kWp)** — System-wide and per-string, using installed capacity or measured peaks as fallback
+- **NEW: Performance Ratio** — Per-string comparison of measured peak vs. installed nameplate capacity
+- **NEW: Installed capacity (kWp)** — Optional config per PV string for accurate specific yield
+- **NEW: Netzbezug Jahres** — Annual grid import extrapolated from benchmark period
+- Benchmark now uses snapshot-based tracking (independent lifecycle, proper reset)
+- Removed "Benchmark" prefix from sensor names (device grouping provides context)
+- WP sensor Wh→kWh auto-conversion safety net
 
 ### v1.9.6
 - **NEW: PV-String Peak & Efficiency** — Optional power sensor (W) per string for automatic peak tracking (kW) and efficiency calculation (kWh/kWp)

@@ -141,11 +141,15 @@ async def async_setup_entry(
             BenchmarkAvgSensor(ctrl, name),
             BenchmarkOwnSensor(ctrl, name),
             BenchmarkGridImportSensor(ctrl, name),
+            BenchmarkAnnualPVSensor(ctrl, name),
             BenchmarkComparisonSensor(ctrl, name),
             BenchmarkCO2Sensor(ctrl, name),
             BenchmarkScoreSensor(ctrl, name),
             BenchmarkRatingSensor(ctrl, name),
         ])
+        # Spezifischer Ertrag nur wenn PV-Strings konfiguriert (für Peak-Summe)
+        if ctrl.pv_strings:
+            entities.append(BenchmarkSpecificYieldSensor(ctrl, name))
         if ctrl.benchmark_heatpump:
             entities.extend([
                 BenchmarkHeatpumpAvgSensor(ctrl, name),
@@ -164,19 +168,24 @@ async def async_setup_entry(
 
     # === PV-STRINGS (optional) ===
     if ctrl.pv_strings:
-        for i, (string_name, string_entity, power_entity) in enumerate(ctrl.pv_strings):
+        for i, (string_name, string_entity, power_entity, installed_kwp) in enumerate(ctrl.pv_strings):
             entities.extend([
-                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "production"),
-                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "daily"),
-                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "percentage"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "production"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "daily"),
+                PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "percentage"),
             ])
             if power_entity:
                 entities.extend([
-                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "peak"),
-                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "daily_peak"),
+                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "peak"),
+                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "daily_peak"),
                 ])
+            # Spezifischer Ertrag + Performance Ratio (braucht kWp oder Power-Entity)
+            if installed_kwp > 0 or power_entity:
+                entities.append(PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "specific_yield"))
+            if power_entity and installed_kwp > 0:
+                entities.append(PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, installed_kwp, "performance_ratio"))
         entities.append(TotalDailyProductionSensor(ctrl, name))
-        if any(p for _, _, p in ctrl.pv_strings):
+        if any(p for _, _, p, _ in ctrl.pv_strings):
             entities.append(TotalPeakSensor(ctrl, name))
             entities.append(TotalDailyPeakSensor(ctrl, name))
 
@@ -236,9 +245,10 @@ class BaseEntity(SensorEntity):
 class PVStringSensor(BaseEntity):
     """Generischer Sensor für PV-String Vergleich."""
 
-    def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, power_entity_id: str | None, sensor_type: str):
+    def __init__(self, ctrl, name: str, string_index: int, string_name: str, entity_id: str, power_entity_id: str | None, installed_kwp: float, sensor_type: str):
         self._string_entity_id = entity_id
         self._power_entity_id = power_entity_id
+        self._installed_kwp = installed_kwp
         self._sensor_type = sensor_type
 
         uid_suffix_map = {
@@ -247,6 +257,8 @@ class PVStringSensor(BaseEntity):
             "peak": "Peak",
             "daily_peak": "Peak Heute",
             "percentage": "Anteil",
+            "specific_yield": "Spez. Ertrag",
+            "performance_ratio": "Performance Ratio",
         }
         props_map = {
             "production": ("kWh", "mdi:solar-panel", SensorStateClass.TOTAL_INCREASING),
@@ -254,6 +266,8 @@ class PVStringSensor(BaseEntity):
             "peak": ("kW", "mdi:solar-power-variant", SensorStateClass.MEASUREMENT),
             "daily_peak": ("kW", "mdi:solar-power-variant-outline", SensorStateClass.MEASUREMENT),
             "percentage": ("%", "mdi:chart-pie", SensorStateClass.MEASUREMENT),
+            "specific_yield": ("kWh/kWp", "mdi:solar-power-variant-outline", SensorStateClass.MEASUREMENT),
+            "performance_ratio": ("%", "mdi:gauge", SensorStateClass.MEASUREMENT),
         }
         uid_suffix = uid_suffix_map[sensor_type]
         unit, icon, state_class = props_map[sensor_type]
@@ -275,6 +289,15 @@ class PVStringSensor(BaseEntity):
         elif self._sensor_type == "daily_peak":
             val = self.ctrl.get_string_daily_peak_kw(self._power_entity_id)
             return val
+        elif self._sensor_type == "specific_yield":
+            # Fallback: installierte kWp → gemessener Peak
+            kwp = self._installed_kwp
+            if kwp <= 0 and self._power_entity_id:
+                peak_kw = self.ctrl.get_string_peak_kw(self._power_entity_id)
+                kwp = peak_kw if peak_kw else 0.0
+            return self.ctrl.get_string_specific_yield(self._string_entity_id, kwp)
+        elif self._sensor_type == "performance_ratio":
+            return self.ctrl.get_string_performance_ratio(self._power_entity_id, self._installed_kwp)
         else:  # percentage
             val = self.ctrl.get_string_percentage(self._string_entity_id)
             return round(val, 1) if val is not None else None
@@ -1612,6 +1635,50 @@ class BenchmarkGridImportSensor(BaseEntity):
     @property
     def native_value(self) -> float | None:
         val = self.ctrl.benchmark_annual_grid_import_kwh
+        if val is None:
+            return None
+        return round(val, 0)
+
+
+class BenchmarkAnnualPVSensor(BaseEntity):
+    """Hochgerechnete PV-Jahresproduktion."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Jahresproduktion",
+            unit="kWh/Jahr",
+            icon="mdi:solar-power",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.benchmark_annual_pv_production_kwh
+        if val is None:
+            return None
+        return round(val, 0)
+
+
+class BenchmarkSpecificYieldSensor(BaseEntity):
+    """Spezifischer Ertrag in kWh/kWp."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Spezifischer Ertrag",
+            unit="kWh/kWp",
+            icon="mdi:solar-power-variant-outline",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.benchmark_specific_yield
         if val is None:
             return None
         return round(val, 0)
