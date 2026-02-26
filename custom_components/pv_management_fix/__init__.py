@@ -1234,15 +1234,13 @@ class PVManagementFixController:
         peak = self._string_peak_w.get(power_entity_id, 0.0)
         return round(peak / 1000, 1) if peak > 0 else None
 
-    def get_string_efficiency(self, energy_entity_id: str, power_entity_id: str) -> float | None:
-        """Effizienz in kWh/kWp (Produktion / Peak)."""
-        if not power_entity_id:
+    def get_total_daily_production_kwh(self) -> float | None:
+        """Durchschnittliche Tagesproduktion aller Strings zusammen."""
+        if not self._string_first_seen_date or not self._string_tracked_kwh:
             return None
-        peak_kw = self._string_peak_w.get(power_entity_id, 0.0) / 1000
-        if peak_kw <= 0:
-            return None
-        tracked = self._string_tracked_kwh.get(energy_entity_id, 0.0)
-        return round(tracked / peak_kw, 1) if tracked > 0 else None
+        days = max(1, (date.today() - self._string_first_seen_date).days)
+        total = sum(self._string_tracked_kwh.values())
+        return round(total / days, 2) if total > 0 else None
 
     def get_total_peak_kw(self) -> float | None:
         """Summe aller String-Peaks in kW."""

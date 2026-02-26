@@ -173,8 +173,8 @@ async def async_setup_entry(
                 entities.extend([
                     PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "peak"),
                     PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "daily_peak"),
-                    PVStringSensor(ctrl, name, i, string_name, string_entity, power_entity, "efficiency"),
                 ])
+        entities.append(TotalDailyProductionSensor(ctrl, name))
         if any(p for _, _, p in ctrl.pv_strings):
             entities.append(TotalPeakSensor(ctrl, name))
             entities.append(TotalDailyPeakSensor(ctrl, name))
@@ -245,7 +245,6 @@ class PVStringSensor(BaseEntity):
             "daily": "Tagesproduktion",
             "peak": "Peak",
             "daily_peak": "Peak Heute",
-            "efficiency": "Effizienz",
             "percentage": "Anteil",
         }
         props_map = {
@@ -253,7 +252,6 @@ class PVStringSensor(BaseEntity):
             "daily": ("kWh/Tag", "mdi:weather-sunny", SensorStateClass.MEASUREMENT),
             "peak": ("kW", "mdi:solar-power-variant", SensorStateClass.MEASUREMENT),
             "daily_peak": ("kW", "mdi:solar-power-variant-outline", SensorStateClass.MEASUREMENT),
-            "efficiency": ("kWh/kWp", "mdi:speedometer", SensorStateClass.MEASUREMENT),
             "percentage": ("%", "mdi:chart-pie", SensorStateClass.MEASUREMENT),
         }
         uid_suffix = uid_suffix_map[sensor_type]
@@ -276,12 +274,21 @@ class PVStringSensor(BaseEntity):
         elif self._sensor_type == "daily_peak":
             val = self.ctrl.get_string_daily_peak_kw(self._power_entity_id)
             return val
-        elif self._sensor_type == "efficiency":
-            val = self.ctrl.get_string_efficiency(self._string_entity_id, self._power_entity_id)
-            return val
         else:  # percentage
             val = self.ctrl.get_string_percentage(self._string_entity_id)
             return round(val, 1) if val is not None else None
+
+
+class TotalDailyProductionSensor(BaseEntity):
+    """Durchschnittliche Tagesproduktion aller PV-Strings."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(ctrl, name, "Gesamt Tagesproduktion", unit="kWh/Tag", icon="mdi:weather-sunny",
+                         state_class=SensorStateClass.MEASUREMENT, device_type=DEVICE_PV_STRINGS)
+
+    @property
+    def native_value(self):
+        return self.ctrl.get_total_daily_production_kwh()
 
 
 class TotalPeakSensor(BaseEntity):
