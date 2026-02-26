@@ -1477,14 +1477,15 @@ class PVManagementFixController:
             new_opts = {**self.entry.options, CONF_QUOTA_START_METER: self._grid_import_kwh}
             self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
 
-        # Quota: Tages-Zählerstand initialisieren falls noch nicht gesetzt
-        if self._quota_day_start_date != date.today() and self._grid_import_kwh > 0:
-            # Am Starttag der Periode: Start-Meter verwenden (nicht aktuellen Zählerstand)
+        # Quota: Tages-Zählerstand initialisieren
+        if self._grid_import_kwh > 0:
             quota_start = self.quota_start_date
             if (self.quota_enabled and quota_start is not None
                     and date.today() == quota_start and self.quota_start_meter > 0):
+                # Am Starttag der Periode: IMMER Start-Meter verwenden
                 self._quota_day_start_meter = self.quota_start_meter
-            else:
+            elif self._quota_day_start_date != date.today():
+                # Normaler Tag: aktuellen Zählerstand bei erstem Start heute
                 self._quota_day_start_meter = self._grid_import_kwh
             self._quota_day_start_date = date.today()
 
