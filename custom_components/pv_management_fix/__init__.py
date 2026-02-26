@@ -117,6 +117,10 @@ class PVManagementFixController:
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date: date | None = None
 
+        # Quota: Zählerstand bei Tagesbeginn (für robustes "Heute Verbleibend")
+        self._quota_day_start_meter: float = 0.0
+        self._quota_day_start_date: date | None = None
+
         # PV-String Delta-Tracking
         self._string_last_kwh: dict[str, float | None] = {}
         self._string_tracked_kwh: dict[str, float] = {}
@@ -166,7 +170,7 @@ class PVManagementFixController:
         self.quota_start_date_str = opts.get(CONF_QUOTA_START_DATE)
         self.quota_start_meter = opts.get(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)
         self.quota_monthly_rate = opts.get(CONF_QUOTA_MONTHLY_RATE, DEFAULT_QUOTA_MONTHLY_RATE)
-        # quota_seasonal entfernt — linearer Ansatz ist transparenter und selbstregulierend
+        # quota_seasonal entfernt — linearer Ansatz ist transparenter
 
         # Batterie
         self.battery_soc_entity = opts.get(CONF_BATTERY_SOC_ENTITY)
@@ -471,12 +475,19 @@ class PVManagementFixController:
         return self.quota_remaining_kwh / remaining_days
 
     @property
+    def quota_today_consumed_kwh(self) -> float:
+        """Heutiger Verbrauch aus Zählerstand (robust gegen Restarts)."""
+        if self._quota_day_start_meter <= 0 or self._grid_import_kwh <= 0:
+            return 0.0
+        return max(0.0, self._grid_import_kwh - self._quota_day_start_meter)
+
+    @property
     def quota_today_remaining_kwh(self) -> float | None:
-        """Verbleibendes Tagesbudget: Budget minus heutiger Verbrauch."""
+        """Verbleibendes Tagesbudget: Budget minus heutiger Verbrauch (zählerstandbasiert)."""
         budget = self.quota_daily_budget_kwh
         if budget is None:
             return None
-        return budget - self._daily_grid_import_kwh
+        return budget - self.quota_today_consumed_kwh
 
     @property
     def quota_forecast_kwh(self) -> float | None:
@@ -1047,6 +1058,11 @@ class PVManagementFixController:
                     self._daily_grid_import_cost = safe_float(data.get("daily_grid_import_cost"))
                     self._daily_feed_in_earnings = safe_float(data.get("daily_feed_in_earnings"))
                     self._daily_feed_in_kwh = safe_float(data.get("daily_feed_in_kwh"))
+                    # Quota Tages-Zählerstand wiederherstellen
+                    qdsm = data.get("quota_day_start_meter")
+                    if qdsm is not None:
+                        self._quota_day_start_meter = safe_float(qdsm)
+                        self._quota_day_start_date = today
             except (ValueError, TypeError):
                 pass
 
@@ -1177,6 +1193,7 @@ class PVManagementFixController:
             "daily_grid_import_cost": self._daily_grid_import_cost,
             "daily_feed_in_earnings": self._daily_feed_in_earnings,
             "daily_feed_in_kwh": self._daily_feed_in_kwh,
+            "quota_day_start_meter": self._quota_day_start_meter,
             "daily_reset_date": today.isoformat(),
             "monthly_grid_import_kwh": self._monthly_grid_import_kwh,
             "monthly_grid_import_cost": self._monthly_grid_import_cost,
@@ -1299,6 +1316,10 @@ class PVManagementFixController:
             self._daily_feed_in_earnings = 0.0
             self._daily_feed_in_kwh = 0.0
             self._daily_tracking_date = today
+            # Quota: Zählerstand für Tagesbeginn merken
+            if self._grid_import_kwh > 0:
+                self._quota_day_start_meter = self._grid_import_kwh
+                self._quota_day_start_date = today
 
         if delta_self_consumption > 0 or delta_export > 0:
             # Bei Fixpreis: Brutto-Preis für Ersparnis (netto × Aufschlagfaktor)
@@ -1442,6 +1463,11 @@ class PVManagementFixController:
             )
             new_opts = {**self.entry.options, CONF_QUOTA_START_METER: self._grid_import_kwh}
             self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
+
+        # Quota: Tages-Zählerstand initialisieren falls noch nicht gesetzt
+        if self._quota_day_start_date != date.today() and self._grid_import_kwh > 0:
+            self._quota_day_start_meter = self._grid_import_kwh
+            self._quota_day_start_date = date.today()
 
         # WP-Sensor initialisieren (last-Wert + first_seen_date)
         if self.benchmark_heatpump_entity:

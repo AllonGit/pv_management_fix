@@ -80,7 +80,7 @@ DEFAULT_QUOTA_ENABLED: Final[bool] = False
 DEFAULT_QUOTA_YEARLY_KWH: Final[float] = 4000.0  # kWh pro Jahr
 DEFAULT_QUOTA_START_METER: Final[float] = 0.0  # Zählerstand bei Start
 DEFAULT_QUOTA_MONTHLY_RATE: Final[float] = 0.0  # €/Monat Abschlag
-DEFAULT_QUOTA_SEASONAL: Final[bool] = True
+DEFAULT_QUOTA_SEASONAL: Final[bool] = False
 
 # Saisonale Gewichtungsfaktoren (deutscher Wohnstrom-Durchschnitt)
 # Normalisiert auf Summe = 12 (Faktor 1.0 = Durchschnitt)
