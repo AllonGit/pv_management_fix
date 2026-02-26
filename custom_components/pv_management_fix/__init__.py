@@ -873,26 +873,45 @@ class PVManagementFixController:
 
     @property
     def benchmark_efficiency_score(self) -> int | None:
-        """Effizienz-Score 0-100."""
+        """Effizienz-Score 0-100.
+
+        Gewichtung:
+        - Autarkiegrad (35): Wie unabhängig vom Netz
+        - Spezifischer Ertrag (25): Wie gut die Anlage genutzt wird (kWh/kWp vs 900 Referenz)
+        - Eigenverbrauchsquote (20): Reduziert, da große Anlagen hier benachteiligt sind
+        - Verbrauch vs. Durchschnitt (20): Reduziert, da WP-Nutzer sonst bestraft werden
+        """
+        # Mindestens Autarkie oder Verbrauchsvergleich muss vorhanden sein
+        autarky = self.autarky_rate
         comparison = self.benchmark_consumption_vs_avg
-        if comparison is None:
+        if autarky is None and comparison is None:
             return None
 
-        # Verbrauch vs. Durchschnitt (40 Punkte)
-        # -50% = 40 Punkte, 0% = 20 Punkte, +50% = 0 Punkte
-        consumption_score = max(0, min(40, 20 - comparison * 0.4))
-
-        # Autarkiegrad (30 Punkte)
-        autarky = self.autarky_rate
-        autarky_score = 0
+        # Autarkiegrad (35 Punkte) — 100% = 35, 0% = 0
+        autarky_score = 0.0
         if autarky is not None:
-            autarky_score = min(30, autarky * 0.3)
+            autarky_score = min(35, autarky * 0.35)
 
-        # Eigenverbrauchsquote (30 Punkte)
+        # Spezifischer Ertrag (25 Punkte) — 900 kWh/kWp = 25, 0 = 0
+        yield_score = 0.0
+        specific = self.benchmark_specific_yield
+        if specific is not None and specific > 0:
+            # 900 kWh/kWp als Referenz (guter Wert für Mitteleuropa)
+            yield_score = min(25, (specific / 900) * 25)
+
+        # Eigenverbrauchsquote (20 Punkte) — 100% = 20, 0% = 0
+        ratio_score = 0.0
         self_ratio = self.self_consumption_ratio
-        ratio_score = min(30, self_ratio * 0.3)
+        if self_ratio is not None:
+            ratio_score = min(20, self_ratio * 0.2)
 
-        return int(consumption_score + autarky_score + ratio_score)
+        # Verbrauch vs. Durchschnitt (20 Punkte)
+        # -50% = 20, 0% = 10, +50% = 0
+        consumption_score = 0.0
+        if comparison is not None:
+            consumption_score = max(0, min(20, 10 - comparison * 0.2))
+
+        return int(autarky_score + yield_score + ratio_score + consumption_score)
 
     @property
     def benchmark_rating(self) -> str | None:
