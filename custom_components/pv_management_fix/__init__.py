@@ -1423,15 +1423,26 @@ class PVManagementFixController:
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
 
-        # Quota: Auto-Capture Zählerstand wenn 0 eingetragen
-        if self.quota_enabled and self.quota_start_meter == 0 and self._grid_import_kwh > 0:
-            self.quota_start_meter = self._grid_import_kwh
-            _LOGGER.info(
-                "Quota: Zählerstand automatisch erfasst: %.2f kWh",
-                self.quota_start_meter,
-            )
-            new_opts = {**self.entry.options, CONF_QUOTA_START_METER: self._grid_import_kwh}
-            self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
+        # Quota: Auto-Capture Zählerstand
+        # Fall 1: Zählerstand = 0 → erst am/nach Startdatum erfassen
+        # Fall 2: Startdatum = heute → Zählerstand neu erfassen (korrigiert zu früh gecapturten Wert)
+        quota_start = self.quota_start_date
+        if self.quota_enabled and self._grid_import_kwh > 0 and quota_start is not None:
+            should_capture = False
+            if self.quota_start_meter == 0 and date.today() >= quota_start:
+                should_capture = True
+            elif quota_start == date.today() and self.quota_start_meter > 0:
+                # Startdatum ist heute — Zählerstand aktualisieren falls er zu früh erfasst wurde
+                if self._grid_import_kwh > self.quota_start_meter:
+                    should_capture = True
+            if should_capture:
+                self.quota_start_meter = self._grid_import_kwh
+                _LOGGER.info(
+                    "Quota: Zählerstand automatisch erfasst: %.2f kWh",
+                    self.quota_start_meter,
+                )
+                new_opts = {**self.entry.options, CONF_QUOTA_START_METER: self._grid_import_kwh}
+                self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
 
         # WP-Sensor initialisieren (last-Wert + first_seen_date)
         if self.benchmark_heatpump_entity:
