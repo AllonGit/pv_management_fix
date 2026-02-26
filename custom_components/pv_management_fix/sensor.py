@@ -1605,13 +1605,13 @@ class BenchmarkAvgSensor(BaseEntity):
 
 
 class BenchmarkOwnSensor(BaseEntity):
-    """Benchmark Eigener Verbrauch — Haushaltsstrom hochgerechnet auf 1 Jahr."""
+    """Benchmark Gesamtverbrauch — inkl. WP, hochgerechnet auf 1 Jahr."""
 
     def __init__(self, ctrl, name: str):
         super().__init__(
             ctrl,
             name,
-            "Eigener Verbrauch",
+            "Gesamtverbrauch",
             unit="kWh/Jahr",
             icon="mdi:home-lightning-bolt",
             state_class=SensorStateClass.MEASUREMENT,

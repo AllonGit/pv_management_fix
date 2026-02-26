@@ -758,7 +758,7 @@ class PVManagementFixController:
 
     @property
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
-        """Eigener Haushaltsstrom hochgerechnet auf 1 Jahr.
+        """Gesamtverbrauch hochgerechnet auf 1 Jahr (inkl. WP).
 
         Verwendet Differenz seit Benchmark-Start (unabhängig von Amortisation).
         """
@@ -774,8 +774,7 @@ class PVManagementFixController:
         total_annual = consumption / days * 365
         if total_annual > 100_000:
             return None
-        wp_annual = self.benchmark_own_heatpump_kwh or 0.0
-        return max(0.0, total_annual - wp_annual)
+        return total_annual
 
     @property
     def benchmark_annual_grid_import_kwh(self) -> float | None:
@@ -803,14 +802,18 @@ class PVManagementFixController:
 
     @property
     def benchmark_consumption_vs_avg(self) -> float | None:
-        """Vergleich eigener Haushaltsstrom vs. Durchschnitt in %."""
+        """Vergleich Gesamtverbrauch vs. Durchschnitt in %.
+
+        Wenn WP aktiv: Vergleich gegen Haushaltsdurchschnitt + WP-Durchschnitt.
+        """
         own = self.benchmark_own_annual_consumption_kwh
         if own is None:
             return None
         avg = self.benchmark_avg_consumption_kwh
         if avg <= 0:
             return None
-        return (own - avg) / avg * 100
+        wp_avg = self.benchmark_avg_heatpump_kwh or 0
+        return (own - (avg + wp_avg)) / (avg + wp_avg) * 100
 
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
