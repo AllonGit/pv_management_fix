@@ -662,6 +662,11 @@ class PVManagementFixController:
                 return (date.today() - install_date).days
             except (ValueError, TypeError):
                 pass
+        return self.days_tracking
+
+    @property
+    def days_tracking(self) -> int:
+        """Tage seit erstem Tracking (unabhängig von Installationsdatum)."""
         if self._first_seen_date:
             return (date.today() - self._first_seen_date).days
         return 0
@@ -739,7 +744,7 @@ class PVManagementFixController:
         Wenn WP-Entity konfiguriert: Gesamtverbrauch MINUS WP-Jahresverbrauch.
         Beide werden unabhängig auf 1 Jahr hochgerechnet (Zeiträume können abweichen).
         """
-        days = self.days_since_installation
+        days = self.days_tracking
         if days < 7:
             return None
         total = self.self_consumption_kwh + self._tracked_grid_import_kwh
@@ -775,7 +780,7 @@ class PVManagementFixController:
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2-Einsparung durch PV pro Jahr (kg)."""
-        days = self.days_since_installation
+        days = self.days_tracking
         if days < 7:
             return None
         daily_pv = self._pv_production_kwh / days if days > 0 else 0
