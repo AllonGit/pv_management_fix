@@ -761,6 +761,14 @@ class PVManagementFixController:
         return max(0.0, total_annual - wp_annual)
 
     @property
+    def benchmark_annual_grid_import_kwh(self) -> float | None:
+        """Jährlicher Netzbezug hochgerechnet (Delta-getrackt)."""
+        days = max(1, self.days_tracking)
+        if self._tracked_grid_import_kwh <= 0:
+            return None
+        return self._tracked_grid_import_kwh / days * 365
+
+    @property
     def benchmark_own_heatpump_kwh(self) -> float | None:
         """WP-Jahresverbrauch (Delta seit erstem Sehen, hochgerechnet auf 1 Jahr)."""
         if not self.benchmark_heatpump or not self.benchmark_heatpump_entity:

@@ -140,6 +140,7 @@ async def async_setup_entry(
         entities.extend([
             BenchmarkAvgSensor(ctrl, name),
             BenchmarkOwnSensor(ctrl, name),
+            BenchmarkGridImportSensor(ctrl, name),
             BenchmarkComparisonSensor(ctrl, name),
             BenchmarkCO2Sensor(ctrl, name),
             BenchmarkScoreSensor(ctrl, name),
@@ -1589,6 +1590,28 @@ class BenchmarkOwnSensor(BaseEntity):
     @property
     def native_value(self) -> float | None:
         val = self.ctrl.benchmark_own_annual_consumption_kwh
+        if val is None:
+            return None
+        return round(val, 0)
+
+
+class BenchmarkGridImportSensor(BaseEntity):
+    """Jährlicher Netzbezug hochgerechnet."""
+
+    def __init__(self, ctrl, name: str):
+        super().__init__(
+            ctrl,
+            name,
+            "Netzbezug Jahres",
+            unit="kWh/Jahr",
+            icon="mdi:transmission-tower-import",
+            state_class=SensorStateClass.MEASUREMENT,
+            device_type=DEVICE_BENCHMARK,
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        val = self.ctrl.benchmark_annual_grid_import_kwh
         if val is None:
             return None
         return round(val, 0)
