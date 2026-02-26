@@ -1558,6 +1558,26 @@ class PVManagementFixController:
         self._last_grid_import_kwh = self._grid_import_kwh
         self._notify_entities()
 
+    def reset_benchmark_tracking(self) -> None:
+        """Setzt Benchmark/WP-Tracking zurück."""
+        _LOGGER.info("Benchmark-Tracking wird zurückgesetzt (WP war: %.2f kWh)", self._tracked_wp_kwh)
+        self._tracked_wp_kwh = 0.0
+        self._wp_first_seen_date = None
+        self._last_wp_kwh = None
+        self._first_seen_date = None
+        self._notify_entities()
+
+    def reset_pv_strings_tracking(self) -> None:
+        """Setzt PV-String-Tracking und Peaks zurück."""
+        _LOGGER.info("PV-Strings-Tracking wird zurückgesetzt")
+        self._string_tracked_kwh.clear()
+        self._string_last_kwh.clear()
+        self._string_first_seen_date = None
+        self._string_peak_w.clear()
+        self._string_daily_peak_w.clear()
+        self._string_daily_peak_date = None
+        self._notify_entities()
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Setup der Integration."""
