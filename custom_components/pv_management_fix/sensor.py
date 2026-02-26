@@ -1354,7 +1354,7 @@ class BatterySOCSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Batterie Ladestand",
+            "Ladestand",
             unit="%",
             icon="mdi:battery-50",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1404,7 +1404,7 @@ class BatteryChargeTotalSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Batterie Ladung Gesamt",
+            "Ladung Gesamt",
             unit="kWh",
             icon="mdi:battery-charging",
             state_class=SensorStateClass.TOTAL_INCREASING,
@@ -1427,7 +1427,7 @@ class BatteryDischargeTotalSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Batterie Entladung Gesamt",
+            "Entladung Gesamt",
             unit="kWh",
             icon="mdi:battery-arrow-down",
             state_class=SensorStateClass.TOTAL_INCREASING,
@@ -1450,7 +1450,7 @@ class BatteryEfficiencySensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Batterie Effizienz",
+            "Effizienz",
             unit="%",
             icon="mdi:battery-heart-variant",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1472,7 +1472,7 @@ class BatteryCyclesSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Batterie Zyklen",
+            "Zyklen",
             unit="Zyklen",
             icon="mdi:battery-sync",
             state_class=SensorStateClass.TOTAL_INCREASING,
@@ -1560,7 +1560,7 @@ class BenchmarkAvgSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark Durchschnitt",
+            "Durchschnitt",
             unit="kWh/Jahr",
             icon="mdi:home-group",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1579,7 +1579,7 @@ class BenchmarkOwnSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark Eigener Verbrauch",
+            "Eigener Verbrauch",
             unit="kWh/Jahr",
             icon="mdi:home-lightning-bolt",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1601,7 +1601,7 @@ class BenchmarkComparisonSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark Vergleich",
+            "Vergleich",
             unit="%",
             icon="mdi:check-circle",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1642,7 +1642,7 @@ class BenchmarkCO2Sensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark CO2 Vermieden",
+            "CO2 Vermieden",
             unit="kg/Jahr",
             icon="mdi:molecule-co2",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1664,7 +1664,7 @@ class BenchmarkScoreSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark Effizienz Score",
+            "Effizienz Score",
             unit="Punkte",
             icon="mdi:star-circle",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1694,7 +1694,7 @@ class BenchmarkRatingSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark Bewertung",
+            "Bewertung",
             icon="mdi:trophy",
             device_type=DEVICE_BENCHMARK,
         )
@@ -1711,7 +1711,7 @@ class BenchmarkHeatpumpAvgSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark WP Durchschnitt",
+            "WP Durchschnitt",
             unit="kWh/Jahr",
             icon="mdi:heat-pump",
             state_class=SensorStateClass.MEASUREMENT,
@@ -1730,7 +1730,7 @@ class BenchmarkHeatpumpOwnSensor(BaseEntity):
         super().__init__(
             ctrl,
             name,
-            "Benchmark WP Verbrauch",
+            "WP Verbrauch",
             unit="kWh/Jahr",
             icon="mdi:heat-pump-outline",
             state_class=SensorStateClass.MEASUREMENT,

@@ -1405,6 +1405,11 @@ class PVManagementFixController:
         elif entity_id in (self.battery_soc_entity, self.battery_charge_entity, self.battery_discharge_entity):
             self._notify_entities()
         elif entity_id == self.benchmark_heatpump_entity:
+            # Unit-Konvertierung: Wh → kWh falls nötig
+            state_obj = self.hass.states.get(entity_id)
+            uom = state_obj.attributes.get("unit_of_measurement", "") if state_obj else ""
+            if uom in ("Wh", "wh"):
+                value = value / 1000
             if self._wp_first_seen_date is None:
                 self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
@@ -1491,7 +1496,11 @@ class PVManagementFixController:
             state = self.hass.states.get(self.benchmark_heatpump_entity)
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 try:
-                    self._last_wp_kwh = float(state.state)
+                    val = float(state.state)
+                    uom = state.attributes.get("unit_of_measurement", "")
+                    if uom in ("Wh", "wh"):
+                        val = val / 1000
+                    self._last_wp_kwh = val
                     if self._wp_first_seen_date is None:
                         self._wp_first_seen_date = date.today()
                 except (ValueError, TypeError):
