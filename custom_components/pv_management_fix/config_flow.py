@@ -357,7 +357,7 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
                     ),
                 vol.Optional(CONF_QUOTA_START_DATE, default=self._get_val(CONF_QUOTA_START_DATE)):
                     selector.DateSelector(),
-                vol.Required(CONF_QUOTA_START_METER, default=self._get_val(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)):
+                vol.Optional(CONF_QUOTA_START_METER, default=self._get_val(CONF_QUOTA_START_METER, DEFAULT_QUOTA_START_METER)):
                     selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=RANGE_QUOTA_METER["min"], max=RANGE_QUOTA_METER["max"], step=RANGE_QUOTA_METER["step"],
