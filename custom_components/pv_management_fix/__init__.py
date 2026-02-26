@@ -745,7 +745,7 @@ class PVManagementFixController:
         Beide werden unabhängig auf 1 Jahr hochgerechnet (Zeiträume können abweichen).
         """
         days = self.days_tracking
-        if days < 7:
+        if days < 1:
             return None
         total = self.self_consumption_kwh + self._tracked_grid_import_kwh
         if total <= 0:
@@ -761,9 +761,7 @@ class PVManagementFixController:
             return None
         if self._wp_first_seen_date is None or self._tracked_wp_kwh <= 0:
             return None
-        wp_days = (date.today() - self._wp_first_seen_date).days
-        if wp_days < 7:
-            return None
+        wp_days = max(1, (date.today() - self._wp_first_seen_date).days)
         return self._tracked_wp_kwh / wp_days * 365
 
     @property
@@ -781,9 +779,9 @@ class PVManagementFixController:
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2-Einsparung durch PV pro Jahr (kg)."""
         days = self.days_tracking
-        if days < 7:
+        if days < 1:
             return None
-        daily_pv = self._pv_production_kwh / days if days > 0 else 0
+        daily_pv = self._pv_production_kwh / days
         annual_pv = daily_pv * 365
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, BENCHMARK_CO2_FACTORS["AT"])
         return annual_pv * co2_factor
