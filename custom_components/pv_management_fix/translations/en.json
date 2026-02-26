@@ -54,7 +54,8 @@
           "quota": "Electricity Quota",
           "battery": "Battery",
           "benchmark": "Energy Benchmark",
-          "pv_strings": "PV Strings"
+          "pv_strings": "PV Strings",
+          "reset": "Reset Data"
         }
       },
       "sensors": {
@@ -200,6 +201,13 @@
           "pv_string_4_entity": "kWh counter for this string",
           "pv_string_4_power": "Power sensor (W) for peak detection (optional)",
           "pv_string_4_kwp": "Installed nameplate capacity in kWp (optional)"
+        }
+      },
+      "reset": {
+        "title": "Reset Data",
+        "description": "Select which tracking data to reset. This cannot be undone!",
+        "data": {
+          "reset_target": "Reset Target"
         }
       }
     }

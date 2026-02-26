@@ -54,7 +54,8 @@
           "quota": "Stromkontingent",
           "battery": "Batterie",
           "benchmark": "Energie-Benchmark",
-          "pv_strings": "PV-Strings"
+          "pv_strings": "PV-Strings",
+          "reset": "Zuruecksetzen"
         }
       },
       "sensors": {
@@ -200,6 +201,13 @@
           "pv_string_4_entity": "kWh-Zaehler fuer diesen String",
           "pv_string_4_power": "Power-Sensor (W) fuer Peak-Erkennung (optional)",
           "pv_string_4_kwp": "Installierte Nennleistung in kWp (optional)"
+        }
+      },
+      "reset": {
+        "title": "Zuruecksetzen",
+        "description": "Waehle welche Tracking-Daten zurueckgesetzt werden sollen. Dies kann nicht rueckgaengig gemacht werden!",
+        "data": {
+          "reset_target": "Zuruecksetzen"
         }
       }
     }
