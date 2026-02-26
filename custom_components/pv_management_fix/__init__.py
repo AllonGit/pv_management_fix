@@ -1580,7 +1580,6 @@ class PVManagementFixController:
         self._tracked_wp_kwh = 0.0
         self._wp_first_seen_date = None
         self._last_wp_kwh = None
-        self._first_seen_date = None
         self._notify_entities()
 
     def reset_pv_strings_tracking(self) -> None:
