@@ -411,12 +411,14 @@ class PVManagementFixController:
 
     @property
     def quota_days_elapsed(self) -> int:
-        """Vergangene Tage seit Periodenbeginn."""
+        """Vergangene Tage seit Periodenbeginn (Starttag = Tag 1)."""
         start = self.quota_start_date
         if start is None:
             return 0
         elapsed = (date.today() - start).days
-        return max(0, min(elapsed, self.quota_days_total))
+        if elapsed < 0:
+            return 0
+        return min(elapsed + 1, self.quota_days_total)
 
     @property
     def quota_days_remaining(self) -> int:
@@ -466,12 +468,16 @@ class PVManagementFixController:
 
     @property
     def quota_expected_kwh(self) -> float:
-        """Soll-Verbrauch (saisonal gewichtet oder linear)."""
+        """Soll-Verbrauch (saisonal gewichtet oder linear, Starttag = Tag 1)."""
         if self.quota_days_total <= 0:
             return 0.0
         start = self.quota_start_date
-        if self.quota_seasonal and start is not None:
-            return self._quota_seasonal_expected(start, date.today())
+        if start is None or date.today() < start:
+            return 0.0
+        if self.quota_seasonal:
+            from datetime import timedelta
+            end = date.today() + timedelta(days=1)
+            return self._quota_seasonal_expected(start, end)
         return (self.quota_days_elapsed / self.quota_days_total) * self.quota_yearly_kwh
 
     @property
