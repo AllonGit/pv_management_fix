@@ -1095,7 +1095,9 @@ class PVManagementFixController:
                 pass
 
         # WP Delta-Tracking wiederherstellen
-        self._tracked_wp_kwh = safe_float(data.get("tracked_wp_kwh"))
+        restored_wp = safe_float(data.get("tracked_wp_kwh"))
+        # Sanity: wenn tracked > 50.000 kWh, war vermutlich Absolutwert statt Delta
+        self._tracked_wp_kwh = restored_wp if restored_wp < 50000 else 0.0
         wp_first_seen = data.get("wp_first_seen_date")
         if wp_first_seen:
             try:
@@ -1400,7 +1402,10 @@ class PVManagementFixController:
             if self._wp_first_seen_date is None:
                 self._wp_first_seen_date = date.today()
             if self._last_wp_kwh is not None and value >= self._last_wp_kwh:
-                self._tracked_wp_kwh += value - self._last_wp_kwh
+                delta = value - self._last_wp_kwh
+                # Sanity check: max 200 kWh pro Update (verhindert Absolutwert als Delta)
+                if delta < 200:
+                    self._tracked_wp_kwh += delta
             self._last_wp_kwh = value
             self._notify_entities()
 
