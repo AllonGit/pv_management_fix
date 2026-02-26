@@ -1417,6 +1417,16 @@ class PVManagementFixController:
         self._last_grid_export_kwh = self._grid_export_kwh
         self._last_grid_import_kwh = self._grid_import_kwh
 
+        # Quota: Auto-Capture Zählerstand wenn 0 eingetragen
+        if self.quota_enabled and self.quota_start_meter == 0 and self._grid_import_kwh > 0:
+            self.quota_start_meter = self._grid_import_kwh
+            _LOGGER.info(
+                "Quota: Zählerstand automatisch erfasst: %.2f kWh",
+                self.quota_start_meter,
+            )
+            new_opts = {**self.entry.options, CONF_QUOTA_START_METER: self._grid_import_kwh}
+            self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
+
         # WP-Sensor initialisieren (last-Wert + first_seen_date)
         if self.benchmark_heatpump_entity:
             state = self.hass.states.get(self.benchmark_heatpump_entity)
