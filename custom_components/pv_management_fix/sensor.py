@@ -128,7 +128,6 @@ async def async_setup_entry(
         entities.extend([
             QuotaRemainingSensor(ctrl, name),
             QuotaConsumedPercentSensor(ctrl, name),
-            QuotaReserveSensor(ctrl, name),
             QuotaDailyBudgetSensor(ctrl, name),
             QuotaForecastSensor(ctrl, name),
             QuotaDaysRemainingSensor(ctrl, name),
