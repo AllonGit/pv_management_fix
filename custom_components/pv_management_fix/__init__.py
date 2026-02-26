@@ -756,7 +756,9 @@ class PVManagementFixController:
             return None
         if self._wp_first_seen_date is None or self._tracked_wp_kwh <= 0:
             return None
-        wp_days = max(1, (date.today() - self._wp_first_seen_date).days)
+        wp_days = (date.today() - self._wp_first_seen_date).days
+        if wp_days < 7:
+            return None
         return self._tracked_wp_kwh / wp_days * 365
 
     @property
