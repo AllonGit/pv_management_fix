@@ -172,15 +172,11 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
             },
         )
 
-    async def _save_and_return_to_menu(self, user_input):
+    async def _save_and_return_to_menu(self, user_input, optional_entity_keys=()):
         """Speichert die Options und zeigt das Menü wieder an."""
-        # Optionale Entity-Keys: wenn nicht im Input, explizit auf None setzen
-        # damit ein entfernter Sensor auch wirklich gelöscht wird
-        for key in (CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY,
-                    CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY,
-                    CONF_BENCHMARK_HEATPUMP_ENTITY,
-                    CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
-                    CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER):
+        # Nur die optionalen Entity-Keys der AKTUELLEN Seite auf None setzen,
+        # damit ein entfernter Sensor gelöscht wird ohne andere Seiten zu beeinflussen
+        for key in optional_entity_keys:
             if key not in user_input and key in self.config_entry.options:
                 user_input[key] = None
 
@@ -224,7 +220,8 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
     async def async_step_prices(self, user_input=None):
         """Strompreise und Amortisation konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_ELECTRICITY_PRICE_ENTITY, CONF_FEED_IN_TARIFF_ENTITY))
 
         return self.async_show_form(
             step_id="prices",
@@ -384,7 +381,8 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
     async def async_step_battery(self, user_input=None):
         """Batterie-Speicher konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_BATTERY_SOC_ENTITY, CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY))
 
         return self.async_show_form(
             step_id="battery",
@@ -411,7 +409,8 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
     async def async_step_benchmark(self, user_input=None):
         """Energie-Benchmark konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_BENCHMARK_HEATPUMP_ENTITY,))
 
         return self.async_show_form(
             step_id="benchmark",
@@ -448,7 +447,11 @@ class PVManagementFixOptionsFlow(config_entries.OptionsFlow):
     async def async_step_pv_strings(self, user_input=None):
         """PV-Strings konfigurieren."""
         if user_input is not None:
-            return await self._save_and_return_to_menu(user_input)
+            return await self._save_and_return_to_menu(user_input, optional_entity_keys=(
+                CONF_PV_STRING_1_ENTITY, CONF_PV_STRING_2_ENTITY,
+                CONF_PV_STRING_3_ENTITY, CONF_PV_STRING_4_ENTITY,
+                CONF_PV_STRING_1_POWER, CONF_PV_STRING_2_POWER,
+                CONF_PV_STRING_3_POWER, CONF_PV_STRING_4_POWER))
 
         schema = {}
         for i, (name_key, entity_key, power_key) in enumerate([
