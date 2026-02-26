@@ -749,11 +749,11 @@ class PVManagementFixController:
     def benchmark_own_annual_consumption_kwh(self) -> float | None:
         """Eigener Haushaltsstrom hochgerechnet auf 1 Jahr.
 
-        Wenn WP-Entity konfiguriert: Gesamtverbrauch MINUS WP-Jahresverbrauch.
-        Beide werden unabhängig auf 1 Jahr hochgerechnet (Zeiträume können abweichen).
+        Verwendet nur Delta-getrackte Werte (ohne Offsets), damit der Zeitraum
+        konsistent mit dem WP-Tracking ist.
         """
-        days = max(1, self.days_since_installation)
-        total = self.self_consumption_kwh + self._tracked_grid_import_kwh
+        days = max(1, self.days_tracking)
+        total = self._total_self_consumption_kwh + self._tracked_grid_import_kwh
         if total <= 0:
             return None
         total_annual = total / days * 365
@@ -784,8 +784,9 @@ class PVManagementFixController:
     @property
     def benchmark_co2_avoided_kg(self) -> float | None:
         """CO2-Einsparung durch PV pro Jahr (kg)."""
-        days = max(1, self.days_since_installation)
-        daily_pv = self._pv_production_kwh / days
+        days = max(1, self.days_tracking)
+        tracked_pv = self._total_self_consumption_kwh + self._total_feed_in_kwh
+        daily_pv = tracked_pv / days
         annual_pv = daily_pv * 365
         co2_factor = BENCHMARK_CO2_FACTORS.get(self.benchmark_country, BENCHMARK_CO2_FACTORS["AT"])
         return annual_pv * co2_factor
