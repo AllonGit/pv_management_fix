@@ -1480,13 +1480,24 @@ class PVManagementFixController:
         # Quota: Tages-Zählerstand initialisieren
         if self._grid_import_kwh > 0:
             quota_start = self.quota_start_date
+            _LOGGER.info(
+                "Quota init: grid_import=%.2f, quota_enabled=%s, quota_start=%s (type=%s), "
+                "today=%s, start_meter=%.2f, day_start_meter=%.2f, day_start_date=%s",
+                self._grid_import_kwh, self.quota_enabled, quota_start,
+                type(quota_start).__name__, date.today(), self.quota_start_meter,
+                self._quota_day_start_meter, self._quota_day_start_date,
+            )
             if (self.quota_enabled and quota_start is not None
                     and date.today() == quota_start and self.quota_start_meter > 0):
                 # Am Starttag der Periode: IMMER Start-Meter verwenden
                 self._quota_day_start_meter = self.quota_start_meter
+                _LOGGER.info("Quota: Starttag erkannt, day_start_meter=%.2f (aus start_meter)", self._quota_day_start_meter)
             elif self._quota_day_start_date != date.today():
                 # Normaler Tag: aktuellen Zählerstand bei erstem Start heute
                 self._quota_day_start_meter = self._grid_import_kwh
+                _LOGGER.info("Quota: Neuer Tag, day_start_meter=%.2f (aus grid_import)", self._quota_day_start_meter)
+            else:
+                _LOGGER.info("Quota: Kein Update nötig, day_start_meter bleibt %.2f", self._quota_day_start_meter)
             self._quota_day_start_date = date.today()
 
         # WP-Sensor initialisieren (last-Wert + first_seen_date)
